@@ -1336,10 +1336,6 @@
     });
 
     function stepBreak(delta){
-      if(state.running){
-        return;
-      }
-
       clearIfDone();
 
       const maxBreakMin = Math.min(60, Math.floor(state.totalSec / 60));

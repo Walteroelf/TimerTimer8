@@ -7,6 +7,7 @@
 
   <link rel="apple-touch-icon" href="timer-icon.png">
   <link rel="icon" type="image/png" href="timer-icon.png">
+  <link rel="manifest" href="manifest.json">
 
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Timer">
@@ -233,6 +234,25 @@
       font-size:3.6rem;
       font-weight:800;
       color:#fff;
+    }
+
+    #stepFlash{
+      opacity:0;
+      pointer-events:none;
+      transform-box:view-box;
+      transform-origin:110px 110px;
+    }
+
+    #stepFlash.show{
+      animation:stepFlash 1.2s ease-out forwards;
+    }
+
+    @keyframes stepFlash{
+      0%{ opacity:0; transform:scale(.5); }
+      12%{ opacity:1; transform:scale(1.15); }
+      25%{ transform:scale(1); }
+      70%{ opacity:1; }
+      100%{ opacity:0; transform:scale(1); }
     }
 
     @media (orientation: portrait){
@@ -473,6 +493,12 @@
           <circle id="handleTotal" r="10" fill="var(--blue)" stroke="#fff" stroke-width="3" style="display:none" />
 
           <circle cx="110" cy="110" r="72" fill="transparent" stroke="currentColor" stroke-width="2"/>
+
+          <g id="stepFlash" aria-hidden="true">
+            <rect id="stepFlashBg" x="56" y="78" width="108" height="64" rx="16" fill="#0f172a" opacity="0.9"/>
+            <text id="stepFlashText" x="110" y="128" text-anchor="middle" fill="#fff"
+                  style="font: 900 50px/1 ui-sans-serif, system-ui, -apple-system, Segoe UI;">+1</text>
+          </g>
         </svg>
       </div>
 
@@ -791,6 +817,41 @@
       }
     });
 
+    function playTone(ctx, freq, start, dur = 0.2, type = 'sine', gain = 0.28){
+      const t = ctx.currentTime;
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t + start);
+
+      o.connect(g).connect(ctx.destination);
+
+      g.gain.setValueAtTime(0.0001, t + start);
+      g.gain.linearRampToValueAtTime(gain, t + start + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + start + dur);
+
+      o.start(t + start);
+      o.stop(t + start + dur + 0.03);
+    }
+
+    // Kurzer eigener Ton beim Verstellen der Auszeit: + steigt hell, − fällt tief
+    function playStepSound(delta){
+      const ctx = getAudioCtx();
+
+      if(!ctx){
+        return;
+      }
+
+      if(delta > 0){
+        playTone(ctx, 988, 0, 0.09, 'square', 0.12);
+        playTone(ctx, 1319, 0.08, 0.12, 'square', 0.12);
+      }else{
+        playTone(ctx, 330, 0, 0.09, 'sawtooth', 0.14);
+        playTone(ctx, 220, 0.08, 0.14, 'sawtooth', 0.14);
+      }
+    }
+
     function playChime(phase){
       const ctx = getAudioCtx();
 
@@ -798,24 +859,7 @@
         return;
       }
 
-      const t = ctx.currentTime;
-
-      const tone = (freq, start, dur = 0.2, type = 'sine', gain = 0.28) => {
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-
-        o.type = type;
-        o.frequency.setValueAtTime(freq, t + start);
-
-        o.connect(g).connect(ctx.destination);
-
-        g.gain.setValueAtTime(0.0001, t + start);
-        g.gain.linearRampToValueAtTime(gain, t + start + 0.01);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + start + dur);
-
-        o.start(t + start);
-        o.stop(t + start + dur + 0.03);
-      };
+      const tone = (freq, start, dur, type, gain) => playTone(ctx, freq, start, dur, type, gain);
 
       if(phase === 'break'){
         tone(660, 0, 0.18, 'sine', 0.26);
@@ -1037,6 +1081,8 @@
       const elapsed = currentElapsed();
 
       updateDial(elapsed);
+
+      breakBig.textContent = shownBreakMin(elapsed);
 
       if(state.running){
         mainBtn.classList.add('pauseState');
@@ -1335,19 +1381,59 @@
       dragMode = null;
     });
 
+    // Auszeit-Minuten, die tatsächlich noch kommen (in der laufenden Auszeit also die Rest-Auszeit)
+    function shownBreakMin(elapsed){
+      if(!state.started || elapsed >= state.totalSec){
+        return Math.floor(state.breakSec / 60);
+      }
+
+      return Math.ceil(Math.min(state.breakSec, state.totalSec - elapsed) / 60);
+    }
+
+    // Das Ende (totalSec) bleibt fest – +/− verschieben nur die Grenze zwischen Arbeit und Auszeit
     function stepBreak(delta){
       clearIfDone();
 
-      const maxBreakMin = Math.min(60, Math.floor(state.totalSec / 60));
-      const v = clamp(Math.floor(state.breakSec / 60) + delta, 0, maxBreakMin);
+      const elapsed = currentElapsed();
+      const remainingSec = state.totalSec - elapsed;
 
-      state.breakSec = v * 60;
+      const before = shownBreakMin(elapsed);
+      const maxBreakMin = Math.min(60, Math.ceil(remainingSec / 60));
+      const v = clamp(before + delta, 0, maxBreakMin);
+
+      state.breakSec = Math.min(v * 60, state.totalSec);
       state.workSec = state.totalSec - state.breakSec;
-
-      breakBig.textContent = v;
 
       updateUI();
       save();
+
+      if(v !== before){
+        showStepFeedback(v - before);
+      }
+    }
+
+    const stepFlash = document.getElementById('stepFlash');
+    const stepFlashBg = document.getElementById('stepFlashBg');
+    const stepFlashText = document.getElementById('stepFlashText');
+
+    let flashSum = 0;
+    let flashLast = 0;
+
+    // Großes „+1“ / „−1“ auf der Scheibe; schnelle Folgedrücke werden aufsummiert (z. B. „−3“)
+    function showStepFeedback(change){
+      const now = Date.now();
+
+      flashSum = (now - flashLast < 1200) ? flashSum + change : change;
+      flashLast = now;
+
+      stepFlashText.textContent = flashSum > 0 ? `+${flashSum}` : (flashSum < 0 ? `−${-flashSum}` : '±0');
+      stepFlashBg.setAttribute('fill', flashSum < 0 ? '#7f1d1d' : (flashSum > 0 ? '#14532d' : '#0f172a'));
+
+      stepFlash.classList.remove('show');
+      stepFlash.getBoundingClientRect();
+      stepFlash.classList.add('show');
+
+      playStepSound(change);
     }
 
     function addRepeater(btn, fn){
@@ -1391,6 +1477,10 @@
     }, 15000);
 
     updateUI();
+
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
   </script>
 </body>
 </html>

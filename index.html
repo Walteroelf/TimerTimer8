@@ -307,6 +307,67 @@
       background:#0f766e;
     }
 
+    .helpBtn{
+      background:#334155;
+    }
+
+    .remoteBox.helpBox{
+      width:min(680px, 100%);
+      text-align:left;
+      padding:22px 22px 18px;
+      line-height:1.5;
+    }
+
+    .helpBox h2{
+      font-size:1.4rem;
+      margin:0 0 4px;
+    }
+
+    .helpBox h3{
+      font-size:1.05rem;
+      margin:20px 0 6px;
+    }
+
+    .helpBox p,
+    .helpBox ul,
+    .helpBox ol{
+      margin:0 0 8px;
+    }
+
+    .helpBox ul,
+    .helpBox ol{
+      padding-left:1.3em;
+    }
+
+    .helpBox li{
+      margin-bottom:4px;
+    }
+
+    .helpLead{
+      color:var(--fg-soft);
+    }
+
+    .helpRule{
+      background:rgba(37,99,235,.08);
+      border-left:4px solid var(--blue);
+      border-radius:8px;
+      padding:10px 12px;
+      margin:12px 0;
+    }
+
+    .chip{
+      display:inline-block;
+      width:.9em;
+      height:.9em;
+      border-radius:50%;
+      vertical-align:-.08em;
+      margin-right:2px;
+    }
+
+    .helpBox .remoteActions{
+      margin-top:18px;
+    }
+
     /* Gesperrt vom Lehrer-iPad: keine Bedienelemente, nur die Anzeige */
     body.locked .btnRow,
     body.locked .bigStep{
@@ -735,6 +796,13 @@
             <path d="M3 3h8v8H3zm2 2v4h4V5zM13 3h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zM13 13h3v3h-3zm5 0h3v3h-3zm-5 5h3v3h-3zm5 0h3v3h-3zm-2.5-2.5h2v2h-2z"/>
           </svg>
         </button>
+        <button id="helpBtn" class="resetBtn helpBtn" aria-label="Bedienungsanleitung">
+          <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="9.5"/>
+            <path d="M12 11v6"/>
+            <circle cx="12" cy="7.5" r="1.3" fill="#fff" stroke="none"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -775,6 +843,104 @@
       <path d="M8 11V8a4 4 0 0 1 8 0v3"/>
     </svg>
   </button>
+
+  <div id="helpOverlay" class="remoteOverlay" role="dialog" aria-modal="true" aria-labelledby="helpTitle" hidden>
+    <div class="remoteBox helpBox">
+      <h2 id="helpTitle">So funktioniert der Timer</h2>
+      <p class="helpLead">
+        Eine Unterrichtsuhr in zwei Teilen: zuerst <b>Arbeitszeit</b> <span class="chip" style="background:var(--red)"></span>,
+        danach <b>Auszeit</b> <span class="chip" style="background:var(--green)"></span>.
+        Sie können die Auszeit jederzeit spontan verlängern oder kürzen.
+      </p>
+
+      <div class="helpRule">
+        <b>Wichtig:</b> Das <b>Ende der Stunde</b> bleibt fest. Plus und Minus verschieben nur, wie viel davon
+        Arbeitszeit und wie viel Auszeit ist. Das Ende lässt sich nur ändern, wenn der Timer pausiert ist.
+      </div>
+
+      <h3>1. Einstellen</h3>
+      <p>Bei angehaltenem Timer sehen Sie zwei Punkte auf der Scheibe:</p>
+      <ul>
+        <li><b>Blauer Punkt</b> – Ende der Stunde. Mit dem Finger auf die gewünschte Minute ziehen (bis 119 Minuten; über 60 Minuten geht es auf dem inneren Ring weiter).</li>
+        <li><b>Schwarzer Punkt</b> – wie lang die Auszeit am Ende ist.</li>
+      </ul>
+      <p>In der Mitte stehen die Gesamtzeit und die <b>Uhrzeit, zu der der Timer endet</b>.</p>
+
+      <h3>2. Starten und pausieren</h3>
+      <p>
+        <b>▶</b> startet, <b>❚❚</b> pausiert. Während der Timer läuft, sieht er bewusst schlicht aus:
+        nur die Scheibe, Pause und die Auszeit-Tasten.
+      </p>
+
+      <h3>3. Auszeit spontan ändern</h3>
+      <ul>
+        <li><b>+</b> gibt dem Schüler eine Minute mehr Auszeit, <b>−</b> nimmt eine Minute weg. Das geht jederzeit, auch während der Timer läuft und auch in der Auszeit.</li>
+        <li>Der Schüler sieht groß <b>„+1“</b> oder <b>„−1“</b> und hört einen kurzen Ton. Bei Plus fliegt ein Stern ins grüne Feld.</li>
+        <li>Das grüne Feld zeigt, wie viele Minuten Auszeit noch kommen.</li>
+      </ul>
+
+      <h3>4. Signale</h3>
+      <ul>
+        <li><b>1 Minute vor Ende der Arbeitszeit:</b> leiser Doppelton, der grüne Bereich blinkt sanft.</li>
+        <li><b>Beginn der Auszeit:</b> Gong und groß <b>„AUSZEIT!“</b>.</li>
+        <li><b>1 Minute vor Ende der Auszeit:</b> leiser Doppelton, der grüne Bereich blinkt sanft.</li>
+        <li><b>Ende:</b> dreifacher Gong und groß <b>„FERTIG!“</b>.</li>
+      </ul>
+
+      <h3>5. Die Knöpfe unter der Scheibe</h3>
+      <p>Außer ▶/❚❚ sind sie nur sichtbar, wenn der Timer angehalten ist:</p>
+      <ul>
+        <li><b>↺</b> – zurück auf 45 Minuten mit 10 Minuten Auszeit.</li>
+        <li><b>Lautsprecher</b> – Ton an oder aus (orange = aus).</li>
+        <li><b>QR-Code</b> – Lehrer-iPad verbinden (siehe 6.).</li>
+        <li><b>i</b> – diese Anleitung.</li>
+      </ul>
+
+      <h3>6. Mit dem Lehrer-iPad steuern</h3>
+      <ol>
+        <li>Auf diesem iPad den <b>QR-Code-Knopf</b> antippen.</li>
+        <li>Den QR-Code mit der <b>Kamera Ihres iPads</b> scannen und den Link öffnen.</li>
+        <li>Sobald oben „Verbunden“ steht, mit <b>Fertig</b> das Fenster hier schließen.</li>
+      </ol>
+      <p>Auf Ihrem iPad sehen Sie dieselbe Scheibe und können:</p>
+      <ul>
+        <li>Auszeit <b>+ / −</b>, <b>Start / Pause</b> und den <b>Ton</b> jederzeit bedienen,</li>
+        <li>bei angehaltenem Timer mit den Punkten auf der Scheibe einstellen und <b>zurücksetzen</b>.</li>
+      </ul>
+      <p>
+        Beide iPads brauchen dafür Internet. Bricht die Verbindung ab, läuft der Timer hier normal weiter,
+        und Ihr iPad verbindet sich von selbst wieder.
+      </p>
+
+      <h3>7. Schüler-iPad sperren</h3>
+      <p>
+        Auf Ihrem iPad unter <b>„Schüler-iPad“</b> auf <b>„Bedienung sperren“</b> tippen. Dann zeigt dieses iPad nur
+        noch den Timer und lässt sich nicht mehr bedienen, auch nicht nach einem Neustart. Steuern können Sie
+        nur noch von Ihrem iPad aus.
+      </p>
+      <p>
+        <b>Notfall:</b> Ist die Verbindung weg, hier oben rechts das kleine <b>Schloss</b> antippen und den
+        4-stelligen <b>Notfall-Code</b> eingeben. Den Code sehen nur Sie auf Ihrem iPad.
+      </p>
+
+      <h3>8. Verbindung aufheben</h3>
+      <p>
+        Auf Ihrem iPad <b>„Verbindung aufheben“</b> tippen. Dieses iPad wird dabei automatisch entsperrt,
+        und der Timer läuft weiter. Für eine neue Verbindung einfach wieder den QR-Code scannen.
+      </p>
+
+      <h3>Tipps</h3>
+      <ul>
+        <li><b>Als App speichern:</b> In Safari <b>Teilen → „Zum Home-Bildschirm“</b>. Danach startet der Timer auch ohne Internet.</li>
+        <li><b>Kein Ton?</b> Den Stummschalter bzw. „Stumm“ im Kontrollzentrum ausschalten und einmal auf den Bildschirm tippen.</li>
+        <li>Solange der Timer läuft, bleibt der Bildschirm an.</li>
+      </ul>
+
+      <div class="remoteActions">
+        <button id="helpClose" type="button" class="primary">Schließen</button>
+      </div>
+    </div>
+  </div>
 
   <div id="remoteOverlay" class="remoteOverlay" role="dialog" aria-modal="true" aria-labelledby="remoteTitle" hidden>
     <div class="remoteBox">
@@ -819,6 +985,7 @@
     const resetBtn = document.getElementById('resetBtn');
     const soundBtn = document.getElementById('soundBtn');
     const remoteBtn = document.getElementById('remoteBtn');
+    const helpBtn = document.getElementById('helpBtn');
 
     const breakPlus = document.getElementById('breakPlus');
     const breakMinus = document.getElementById('breakMinus');
@@ -1394,12 +1561,14 @@
         resetBtn.style.display = 'none';
         soundBtn.style.display = 'none';
         remoteBtn.style.display = 'none';
+        helpBtn.style.display = 'none';
       }else{
         mainBtn.classList.remove('pauseState');
         mainBtn.setAttribute('aria-label', 'Timer starten');
         resetBtn.style.display = 'flex';
         soundBtn.style.display = 'flex';
         remoteBtn.style.display = 'flex';
+        helpBtn.style.display = 'flex';
       }
 
       remoteSync();
@@ -2223,6 +2392,32 @@
         fn();
       }
     };
+
+    // Bedienungsanleitung
+    const helpOverlay = document.getElementById('helpOverlay');
+
+    function closeHelp(){
+      helpOverlay.hidden = true;
+    }
+
+    helpBtn.addEventListener('click', unlessLocked(() => {
+      helpOverlay.hidden = false;
+      helpOverlay.querySelector('.helpBox').scrollTop = 0;
+    }));
+
+    document.getElementById('helpClose').addEventListener('click', closeHelp);
+
+    helpOverlay.addEventListener('click', (e) => {
+      if(e.target === helpOverlay){
+        closeHelp();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if(e.key === 'Escape'){
+        closeHelp();
+      }
+    });
 
     mainBtn.addEventListener('click', unlessLocked(toggleTimer));
     resetBtn.addEventListener('click', unlessLocked(resetTimer));

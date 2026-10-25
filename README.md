@@ -31,6 +31,7 @@ Weiterentwicklung von [TimerTimer7](https://github.com/Walteroelf/TimerTimer7). 
 | ↺ | Zurücksetzen auf 45 min, davon 10 min Auszeit | nur wenn der Timer steht |
 | 🔊 | Ton an/aus (aus = orange). Stumm gilt für alle Töne und die Vibration, die Anzeigen bleiben. | nur wenn der Timer steht |
 | QR | Lehrer-iPad verbinden (siehe unten) | nur wenn der Timer steht |
+| i | Bedienungsanleitung für Lehrkräfte direkt in der App | nur wenn der Timer steht |
 
 Solange der Timer läuft, sieht er so schlicht wie möglich aus: nur Scheibe, Start/Pause und die Auszeit-Tasten.
 

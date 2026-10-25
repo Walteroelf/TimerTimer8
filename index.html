@@ -1555,17 +1555,22 @@
         const maxBoundaryDeg = Math.min(360, (state.totalSec / 3600) * 360);
         const d = clamp(info.deg, 0, maxBoundaryDeg);
 
-        const maxBreakMin = Math.min(60, Math.floor(state.totalSec / 60));
-        const breakMin = clamp(Math.round(d / 6), 0, maxBreakMin);
-
-        state.breakSec = breakMin * 60;
-        state.workSec = state.totalSec - state.breakSec;
+        setBreakMin(Math.round(d / 6));
 
       }else{
         setRemainingMin(totalMinFromPointer(info), elapsed);
       }
 
       updateUI();
+    }
+
+    // Grenze Arbeitszeit/Auszeit einstellen (schwarzer Griff; nur bei stehendem Timer aufrufen)
+    function setBreakMin(min){
+      const maxBreakMin = Math.min(60, Math.floor(state.totalSec / 60));
+      const breakMin = clamp(min, 0, maxBreakMin);
+
+      state.breakSec = breakMin * 60;
+      state.workSec = state.totalSec - state.breakSec;
     }
 
     // Stundenende einstellen: noch verbleibende Minuten ab jetzt (nur bei stehendem Timer aufrufen)
@@ -1923,6 +1928,11 @@
         // Grundregel: Das Stundenende ändert sich nur, wenn der Timer steht – auch vom Lehrer-iPad aus
         clearIfDone();
         setRemainingMin(Math.round(msg.min), currentElapsed());
+        updateUI();
+        save();
+      }else if(msg.type === 'setBreak' && Number.isFinite(msg.min) && !state.running){
+        clearIfDone();
+        setBreakMin(Math.round(msg.min));
         updateUI();
         save();
       }else if(msg.type === 'reset' && !state.running){

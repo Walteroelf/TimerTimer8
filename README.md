@@ -65,11 +65,12 @@ So verstellst du die Auszeit vom eigenen iPad aus, ohne zum Schüler-iPad zu geh
 **Was die Lehrer-Steuerung kann:**
 
 *Immer:*
-- den Timer des Schülers live sehen: Phase, Restzeit, Auszeit-Minuten und Ende
+- den Timer des Schülers live sehen, auf **derselben Scheibe** wie am Schüler-iPad, dazu Auszeit-Minuten und Ende
 - **− Auszeit / + Auszeit** auslösen; auf dem Schüler-iPad erscheinen dann „±1“, Ton und Stern
 - **Start / Pause** auslösen
 
 *Nur wenn der Timer pausiert ist oder steht (Grundregel 2):*
+- **Grundeinstellung mit den Griffen auf der Scheibe**, genau wie am Schüler-iPad: blauer Griff = Stundenende, schwarzer Griff = Beginn der Auszeit. Das Schüler-iPad übernimmt jede Änderung sofort.
 - **Stundenende** mit −5 / −1 / +1 / +5 Minuten verschieben
 - **Stundenende** direkt als Uhrzeit setzen, z. B. „12:00“, dann **Ende setzen**
 - **↺ Zurücksetzen** auf 45 Minuten mit 10 Minuten Auszeit, mit Rückfrage

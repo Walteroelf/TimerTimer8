@@ -17,7 +17,9 @@
       --card:#fff;
       --shadow:0 6px 18px rgba(0,0,0,.06);
       --red:#ef4444;
+      --red2:#b91c1c;
       --green:#16a34a;
+      --black:#111;
       --blue:#2563eb;
       --track:#e2e8f0;
     }
@@ -100,48 +102,24 @@
       box-shadow:var(--shadow);
     }
 
-    .status{
-      display:grid;
-      grid-template-columns:auto 1fr;
-      gap:18px;
-      align-items:center;
-    }
-
-    .ring{
-      width:132px;
+    .dial{
+      display:block;
+      width:min(100%, 420px, 58dvh);
       aspect-ratio:1 / 1;
-      border-radius:50%;
-      background:var(--track);
-      position:relative;
-    }
-
-    .ring::after{
-      content:"";
-      position:absolute;
-      inset:22%;
-      border-radius:50%;
-      background:var(--card);
-    }
-
-    .phase{
-      font-weight:800;
-      letter-spacing:.06em;
-      font-size:1rem;
-      color:var(--fg-soft);
-    }
-
-    .phase.work{ color:var(--red); }
-    .phase.break{ color:var(--green); }
-
-    .time{
-      font:800 3.2rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-      margin:4px 0 8px;
+      margin:0 auto;
+      touch-action:none;
+      color:#0f172a;
     }
 
     .meta{
+      margin:10px 0 0;
+      text-align:center;
       color:var(--fg-soft);
       font-weight:600;
-      line-height:1.5;
+    }
+
+    .meta b{
+      color:var(--fg);
     }
 
     .controls{
@@ -165,7 +143,7 @@
     }
 
     .step{
-      height:110px;
+      height:96px;
       font-size:3rem;
       font-weight:900;
       color:#fff;
@@ -198,6 +176,7 @@
     }
 
     .note{
+      margin:0;
       font-size:.9rem;
       color:var(--fg-soft);
       line-height:1.45;
@@ -219,6 +198,10 @@
       color:var(--fg);
     }
 
+    .codeForm input[type="time"]{
+      font-family:inherit;
+    }
+
     .codeForm button{
       padding:0 18px;
       background:var(--blue);
@@ -231,14 +214,8 @@
       font-size:1.1rem;
     }
 
-    .endNow{
-      margin:0 0 12px;
-      color:var(--fg-soft);
-      font-weight:600;
-    }
-
-    .endNow b{
-      color:var(--fg);
+    .manage .note{
+      margin-bottom:12px;
     }
 
     .endSteps{
@@ -263,22 +240,6 @@
       gap:8px;
       margin-top:10px;
     }
-
-    .codeForm input[type="time"]{
-      font-family:inherit;
-    }
-
-    @media (max-width: 420px){
-      .status{
-        grid-template-columns:1fr;
-        justify-items:center;
-        text-align:center;
-      }
-
-      .time{
-        font-size:2.8rem;
-      }
-    }
   </style>
 </head>
 
@@ -291,24 +252,56 @@
 
     <section id="codeCard" class="card" hidden>
       <p class="note">Scanne den QR-Code auf dem Schüler-iPad oder gib den Code ein, der darunter steht.</p>
-      <form id="codeForm" class="codeForm">
+      <form id="codeForm" class="codeForm" style="margin-top:10px">
         <input id="codeInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Code" aria-label="Code vom Schüler-iPad">
         <button type="submit">Verbinden</button>
       </form>
     </section>
 
-    <section id="timerCard" class="card">
-      <div class="status">
-        <div id="ring" class="ring" aria-hidden="true"></div>
-        <div>
-          <div id="phase" class="phase">–</div>
-          <div id="time" class="time">--:--</div>
-          <div class="meta">
-            Auszeit: <span id="breakMin">–</span> min<br>
-            Ende: <span id="endTime">–</span>
-          </div>
-        </div>
-      </div>
+    <section class="card">
+      <svg id="dial" class="dial" viewBox="0 0 220 220" role="img" aria-label="Timer des Schüler-iPads">
+        <circle cx="110" cy="110" r="104" fill="currentColor" opacity="0.06"/>
+        <circle cx="110" cy="110" r="100" fill="#fff" stroke="currentColor" stroke-width="3"/>
+
+        <path id="arcGreen" fill="var(--green)" opacity="0.92"/>
+        <path id="arcRed" fill="var(--red)" opacity="0.92"/>
+
+        <circle id="innerFill" cx="110" cy="110" r="72" fill="transparent" opacity="0.92"/>
+
+        <path id="arcRed2" fill="var(--red2)" opacity="0.95"/>
+
+        <g id="ticks"></g>
+
+        <text id="centerLabel" x="110" y="86" text-anchor="middle" fill="#334155"
+              style="font: 800 15px/1.1 ui-sans-serif, system-ui, -apple-system, Segoe UI;">VERBINDE …</text>
+
+        <text id="centerMin" x="100" y="113" text-anchor="end" fill="#334155"
+              style="font: 800 28px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing:0.5px;">--</text>
+
+        <text id="centerColon" x="110" y="113" text-anchor="middle" fill="#334155"
+              style="font: 800 28px/1 ui-monospace, SFMono-Regular, Menlo, monospace;">:</text>
+
+        <text id="centerSec" x="120" y="113" text-anchor="start" fill="#334155"
+              style="font: 800 28px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing:0.5px;">--</text>
+
+        <g id="extras" fill="#000">
+          <text x="110" y="133" text-anchor="middle"
+                style="font: 800 6.8px/1 ui-sans-serif, system-ui, -apple-system, Segoe UI; letter-spacing:0.55px;">GESAMTZEIT</text>
+          <text id="centerTotalTime" x="110" y="145" text-anchor="middle"
+                style="font: 800 11.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing:0.35px;">00:00</text>
+          <text x="110" y="157" text-anchor="middle"
+                style="font: 800 6.8px/1 ui-sans-serif, system-ui, -apple-system, Segoe UI; letter-spacing:0.55px;">ZIELUHRZEIT</text>
+          <text id="centerTargetTime" x="110" y="169" text-anchor="middle"
+                style="font: 800 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing:0.2px;">00:00 Uhr</text>
+        </g>
+
+        <circle id="handleBoundary" r="10" fill="var(--black)" stroke="#fff" stroke-width="3" style="display:none"/>
+        <circle id="handleTotal" r="10" fill="var(--blue)" stroke="#fff" stroke-width="3" style="display:none"/>
+
+        <circle cx="110" cy="110" r="72" fill="transparent" stroke="currentColor" stroke-width="2"/>
+      </svg>
+
+      <p class="meta">Auszeit: <b id="breakMin">–</b> min · Ende: <b id="endTime">–</b></p>
     </section>
 
     <section class="controls">
@@ -320,8 +313,11 @@
     <div id="feedback" class="feedback" aria-live="polite"></div>
 
     <section id="manageCard" class="card manage" hidden>
-      <h2>Stundenende</h2>
-      <p class="endNow">Ende: <b id="endBig">–</b> · noch <span id="remTotal">–</span> min</p>
+      <h2>Einstellen</h2>
+      <p class="note">
+        Wie am Schüler-iPad: <b>blauer Griff</b> = Stundenende, <b>schwarzer Griff</b> = Beginn der Auszeit.
+        Oder hier genauer:
+      </p>
 
       <div class="endSteps">
         <button type="button" data-d="-5">−5 min</button>
@@ -360,9 +356,22 @@
     const codeForm = document.getElementById('codeForm');
     const codeInput = document.getElementById('codeInput');
 
-    const ringEl = document.getElementById('ring');
-    const phaseEl = document.getElementById('phase');
-    const timeEl = document.getElementById('time');
+    const dial = document.getElementById('dial');
+    const ticksG = document.getElementById('ticks');
+    const arcGreen = document.getElementById('arcGreen');
+    const arcRed = document.getElementById('arcRed');
+    const arcRed2 = document.getElementById('arcRed2');
+    const innerFill = document.getElementById('innerFill');
+    const centerLabel = document.getElementById('centerLabel');
+    const centerMin = document.getElementById('centerMin');
+    const centerColon = document.getElementById('centerColon');
+    const centerSec = document.getElementById('centerSec');
+    const extras = document.getElementById('extras');
+    const centerTotalTime = document.getElementById('centerTotalTime');
+    const centerTargetTime = document.getElementById('centerTargetTime');
+    const handleBoundary = document.getElementById('handleBoundary');
+    const handleTotal = document.getElementById('handleTotal');
+
     const breakMinEl = document.getElementById('breakMin');
     const endTimeEl = document.getElementById('endTime');
 
@@ -373,12 +382,13 @@
 
     const manageCard = document.getElementById('manageCard');
     const runNote = document.getElementById('runNote');
-    const endBigEl = document.getElementById('endBig');
-    const remTotalEl = document.getElementById('remTotal');
     const endForm = document.getElementById('endForm');
     const endInput = document.getElementById('endInput');
     const resetBtn = document.getElementById('resetBtn');
     const soundBtn = document.getElementById('soundBtn');
+
+    const MAX_TOTAL_MIN = 119;
+    const STALE_MS = 8000;
 
     // Letzter Stand vom Schüler-iPad und wann er ankam (Zeit läuft lokal weiter)
     let snap = null;
@@ -389,24 +399,188 @@
     let targetId = null;
     let retryTimer = null;
 
+    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
     function setConn(text, kind){
       connEl.textContent = text;
       connEl.className = 'pill' + (kind ? ' ' + kind : '');
     }
 
-    function fmt(sec){
+    function fmtMMSS(sec){
       sec = Math.max(0, Math.floor(sec));
-      return String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
+      return [String(Math.floor(sec / 60)).padStart(2, '0'), String(sec % 60).padStart(2, '0')];
     }
 
     function fmtClock(date){
       return String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0') + ' Uhr';
     }
 
-    const STALE_MS = 8000;
-
     function isConnected(){
       return !!(conn && conn.open && snap && Date.now() - snapAt < STALE_MS);
+    }
+
+    // ---------- Scheibe (gleiche Geometrie wie am Schüler-iPad) ----------
+    const CX = 110;
+    const CY = 110;
+
+    const R_OUT_O = 98;
+    const R_OUT_I = 74;
+    const R_IN_O = 70;
+    const R_IN_I = 62;
+
+    const GRIP_OUTER = (R_OUT_O + R_OUT_I) / 2;
+    const GRIP_INNER = (R_IN_O + R_IN_I) / 2;
+    const TAP_GUARD_RADIUS = R_IN_I - 6;
+
+    (function drawTicks(){
+      for(let i = 0; i < 60; i++){
+        const rad = (i * 6 - 90) * Math.PI / 180;
+        const len = (i % 5 === 0) ? 12 : 6;
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+
+        line.setAttribute('x1', (CX + (100 - len) * Math.cos(rad)).toFixed(2));
+        line.setAttribute('y1', (CY + (100 - len) * Math.sin(rad)).toFixed(2));
+        line.setAttribute('x2', (CX + 100 * Math.cos(rad)).toFixed(2));
+        line.setAttribute('y2', (CY + 100 * Math.sin(rad)).toFixed(2));
+        line.setAttribute('stroke', 'currentColor');
+        line.setAttribute('stroke-width', i % 5 === 0 ? '2' : '1');
+        line.setAttribute('opacity', i % 5 === 0 ? '0.95' : '0.8');
+
+        ticksG.appendChild(line);
+      }
+    })();
+
+    function polar(r, deg){
+      const a = (deg - 90) * Math.PI / 180;
+
+      return { x: CX + r * Math.cos(a), y: CY + r * Math.sin(a) };
+    }
+
+    function sectorPath(rO, rI, startDeg, endDeg){
+      if(endDeg <= startDeg){
+        return '';
+      }
+
+      if(endDeg - startDeg >= 360){
+        endDeg = startDeg + 359.999;
+      }
+
+      const large = (endDeg - startDeg) > 180 ? 1 : 0;
+
+      const p1 = polar(rO, startDeg);
+      const p2 = polar(rO, endDeg);
+      const p3 = polar(rI, endDeg);
+      const p4 = polar(rI, startDeg);
+
+      return `M ${p1.x} ${p1.y} A ${rO} ${rO} 0 ${large} 1 ${p2.x} ${p2.y} L ${p3.x} ${p3.y} A ${rI} ${rI} 0 ${large} 0 ${p4.x} ${p4.y} Z`;
+    }
+
+    // Aktuelle Laufzeit beim Schüler (zwischen zwei Meldungen lokal weitergezählt)
+    function currentElapsed(){
+      if(!snap || !snap.started){
+        return 0;
+      }
+
+      const live = snap.running ? (Date.now() - snapAt) / 1000 : 0;
+
+      return Math.min(snap.totalSec, snap.elapsed + live);
+    }
+
+    function isDone(el){
+      return snap.started && el >= snap.totalSec;
+    }
+
+    function ringGeometry(el){
+      const remRedSec = Math.max(0, snap.workSec - el);
+      const remGreenSec = Math.max(0, snap.totalSec - Math.max(el, snap.workSec));
+
+      const degGreen = Math.min(360, (remGreenSec / 3600) * 360);
+      const redDegTotal = (remRedSec / 3600) * 360;
+
+      const outerRedCapacity = Math.max(0, 360 - degGreen);
+      const degRedOuter = Math.min(redDegTotal, outerRedCapacity);
+      const degRedInner = Math.min(Math.max(0, redDegTotal - outerRedCapacity), 354);
+
+      return {remRedSec, remGreenSec, degGreen, degRedOuter, degRedInner};
+    }
+
+    function blueHandlePos(el){
+      const g = ringGeometry(el);
+
+      if(g.degRedInner > 0){
+        return polar(GRIP_INNER, g.degRedInner);
+      }
+
+      return polar(GRIP_OUTER, g.degGreen + g.degRedOuter);
+    }
+
+    function boundaryHandlePos(el){
+      const deg = isDone(el)
+        ? Math.min(360, (snap.breakSec / 3600) * 360)
+        : ringGeometry(el).degGreen;
+
+      return polar(GRIP_OUTER, deg);
+    }
+
+    function isBoundaryHidden(el){
+      return snap.started && el >= snap.workSec && el < snap.totalSec;
+    }
+
+    function renderDial(){
+      const el = currentElapsed();
+      const done = isDone(el);
+      const {remRedSec, remGreenSec, degGreen, degRedOuter, degRedInner} = ringGeometry(el);
+
+      arcGreen.setAttribute('d', degGreen > 0 ? sectorPath(R_OUT_O, R_OUT_I, 0, degGreen) : '');
+      arcRed.setAttribute('d', degRedOuter > 0 ? sectorPath(R_OUT_O, R_OUT_I, degGreen, degGreen + degRedOuter) : '');
+      arcRed2.setAttribute('d', degRedInner > 0 ? sectorPath(R_IN_O, R_IN_I, 0, degRedInner) : '');
+
+      let fill = '#fff';
+      let label;
+      let rem;
+
+      if(remRedSec > 0){
+        innerFill.setAttribute('fill', 'var(--red)');
+        label = 'ARBEITSZEIT';
+        rem = remRedSec;
+      }else if(remGreenSec > 0){
+        innerFill.setAttribute('fill', 'var(--green)');
+        label = 'AUSZEIT';
+        rem = remGreenSec;
+      }else{
+        innerFill.setAttribute('fill', 'transparent');
+        label = 'FERTIG';
+        rem = 0;
+        fill = '#334155';
+      }
+
+      const [mm, ss] = fmtMMSS(rem);
+
+      centerLabel.textContent = label;
+      centerMin.textContent = mm;
+      centerSec.textContent = ss;
+
+      [centerLabel, centerMin, centerColon, centerSec].forEach((t) => t.setAttribute('fill', fill));
+
+      const remTotalSec = done ? snap.totalSec : snap.totalSec - el;
+      const [tm, ts] = fmtMMSS(remTotalSec);
+
+      extras.style.display = snap.running ? 'none' : 'block';
+      centerTotalTime.textContent = `${tm}:${ts}`;
+      centerTargetTime.textContent = fmtClock(new Date(Date.now() + remTotalSec * 1000));
+
+      const showHandles = isConnected() && !snap.running;
+      const pB = boundaryHandlePos(el);
+      const pT = blueHandlePos(el);
+
+      handleBoundary.setAttribute('cx', pB.x.toFixed(2));
+      handleBoundary.setAttribute('cy', pB.y.toFixed(2));
+      handleTotal.setAttribute('cx', pT.x.toFixed(2));
+      handleTotal.setAttribute('cy', pT.y.toFixed(2));
+
+      handleBoundary.style.display = showHandles && !isBoundaryHidden(el) ? 'block' : 'none';
+      handleTotal.style.display = showHandles ? 'block' : 'none';
     }
 
     function render(){
@@ -420,50 +594,28 @@
         return;
       }
 
-      const live = snap.running ? (Date.now() - snapAt) / 1000 : 0;
-      const el = Math.min(snap.totalSec, snap.elapsed + live);
+      renderDial();
 
-      const remRed = Math.max(0, snap.workSec - el);
-      const remGreen = Math.max(0, snap.totalSec - Math.max(el, snap.workSec));
-      const done = snap.started && el >= snap.totalSec;
+      const el = currentElapsed();
+      const done = isDone(el);
 
-      if(done){
-        phaseEl.textContent = 'FERTIG';
-        phaseEl.className = 'phase';
-        timeEl.textContent = '00:00';
-      }else if(remRed > 0){
-        phaseEl.textContent = snap.running ? 'ARBEITSZEIT' : (snap.started ? 'ARBEITSZEIT · PAUSE' : 'ARBEITSZEIT · BEREIT');
-        phaseEl.className = 'phase work';
-        timeEl.textContent = fmt(remRed);
-      }else{
-        phaseEl.textContent = snap.running ? 'AUSZEIT' : 'AUSZEIT · PAUSE';
-        phaseEl.className = 'phase break';
-        timeEl.textContent = fmt(remGreen);
-      }
+      breakMinEl.textContent = done || !snap.started
+        ? Math.floor(snap.breakSec / 60)
+        : Math.ceil(Math.min(snap.breakSec, snap.totalSec - el) / 60);
 
-      breakMinEl.textContent = done ? Math.floor(snap.breakSec / 60) : Math.ceil(Math.min(snap.breakSec, snap.totalSec - el) / 60);
-      endTimeEl.textContent = done ? '–' : fmtClock(new Date(Date.now() + (snap.totalSec - el) * 1000));
+      const remTotalSec = done ? snap.totalSec : snap.totalSec - el;
+      const end = new Date(Date.now() + remTotalSec * 1000);
 
-      // Ring wie auf der Scheibe: grün = Auszeit, rot = Arbeitszeit (eine Runde = 60 min)
-      const g = Math.min(360, remGreen / 10);
-      const r = Math.min(360 - g, remRed / 10);
-
-      ringEl.style.background = `conic-gradient(var(--green) 0deg ${g}deg, var(--red) ${g}deg ${g + r}deg, var(--track) ${g + r}deg 360deg)`;
-
+      endTimeEl.textContent = fmtClock(end);
       toggleBtn.textContent = snap.running ? 'Pause' : (done ? 'Neu starten' : 'Start');
 
-      // Stundenende & Co. nur bei stehendem Timer (Grundregel)
+      // Einstellen nur bei stehendem Timer (Grundregel: Ende nur pausiert änderbar)
       const canManage = connected && !snap.running;
 
       manageCard.hidden = !canManage;
       runNote.hidden = !(connected && snap.running);
 
       if(canManage){
-        const remTotalSec = done ? snap.totalSec : snap.totalSec - el;
-        const end = new Date(Date.now() + remTotalSec * 1000);
-
-        endBigEl.textContent = fmtClock(end);
-        remTotalEl.textContent = Math.round(remTotalSec / 60);
         soundBtn.textContent = snap.soundOn === false ? 'Ton: aus' : 'Ton: an';
 
         if(document.activeElement !== endInput){
@@ -472,31 +624,161 @@
       }
     }
 
-    // Verbleibende Minuten ab jetzt bis zum Stundenende (nach Ablauf: die eingestellte Gesamtzeit)
-    function remainingMin(){
-      const live = snap.running ? (Date.now() - snapAt) / 1000 : 0;
-      const el = Math.min(snap.totalSec, snap.elapsed + live);
-      const done = snap.started && el >= snap.totalSec;
+    // ---------- Griffe ziehen (nur bei stehendem Timer) ----------
+    // Änderungen werden sofort lokal angezeigt und ans Schüler-iPad geschickt, das sie genauso anwendet.
+    let dragging = false;
+    let dragMode = null;
+    let lastSent = null;
+    let heldSnap = null;
 
-      return Math.round((done ? snap.totalSec : snap.totalSec - el) / 60);
+    function pointerInfo(e){
+      const rect = dial.getBoundingClientRect();
+      const scale = 220 / rect.width;
+
+      const x = (e.clientX - (rect.left + rect.width / 2)) * scale;
+      const y = (e.clientY - (rect.top + rect.height / 2)) * scale;
+
+      let deg = (Math.atan2(y, x) * 180 / Math.PI) + 90;
+
+      if(deg < 0){
+        deg += 360;
+      }
+
+      return { deg, radius: Math.hypot(x, y), vx: CX + x, vy: CY + y };
     }
 
-    function sendRemaining(min){
-      if(min < 1){
-        feedback('Mindestens 1 Minute');
+    function nearestHandle(info){
+      const el = currentElapsed();
+
+      if(isBoundaryHidden(el)){
+        return 'total';
+      }
+
+      const pB = boundaryHandlePos(el);
+      const pT = blueHandlePos(el);
+
+      const dB = Math.hypot(info.vx - pB.x, info.vy - pB.y);
+      const dT = Math.hypot(info.vx - pT.x, info.vy - pT.y);
+
+      return dB <= dT ? 'boundary' : 'total';
+    }
+
+    function totalMinFromPointer(info){
+      if(info.radius < R_OUT_I){
+        return clamp(60 + Math.round(info.deg / 6), 61, MAX_TOTAL_MIN);
+      }
+
+      return clamp(Math.round(info.deg / 6), 1, 60);
+    }
+
+    // Spiegel der Schüler-Funktionen setBreakMin / setRemainingMin
+    function localSetBreak(min){
+      const maxBreakMin = Math.min(60, Math.floor(snap.totalSec / 60));
+
+      snap.breakSec = clamp(min, 0, maxBreakMin) * 60;
+      snap.workSec = snap.totalSec - snap.breakSec;
+    }
+
+    function localSetRemaining(desiredMin, el){
+      const maxMin = Math.max(1, Math.floor((MAX_TOTAL_MIN * 60 - el) / 60));
+      const remSec = clamp(desiredMin, 1, maxMin) * 60;
+      const keepGreen = snap.breakSec;
+
+      snap.totalSec = el + remSec;
+      snap.breakSec = Math.min(keepGreen, remSec, 3600);
+      snap.workSec = snap.totalSec - snap.breakSec;
+
+      const remWork = Math.max(0, snap.workSec - el);
+
+      snap.workSec = el + Math.round(remWork / 60) * 60;
+      snap.totalSec = snap.workSec + snap.breakSec;
+    }
+
+    function applyDrag(info){
+      // Nach Ablauf beginnt jede Einstellung eine neue Runde (wie am Schüler-iPad)
+      if(isDone(currentElapsed())){
+        snap.started = false;
+        snap.elapsed = 0;
+      }
+
+      const el = currentElapsed();
+
+      if(dragMode === 'boundary'){
+        const maxDeg = Math.min(360, (snap.totalSec / 3600) * 360);
+        const min = Math.round(clamp(info.deg, 0, maxDeg) / 6);
+
+        localSetBreak(min);
+
+        if(lastSent !== 'b' + min){
+          lastSent = 'b' + min;
+          send({type:'setBreak', min});
+        }
+      }else{
+        const min = totalMinFromPointer(info);
+
+        localSetRemaining(min, el);
+
+        if(lastSent !== 't' + min){
+          lastSent = 't' + min;
+          send({type:'setRemaining', min});
+        }
+      }
+
+      render();
+    }
+
+    dial.addEventListener('pointerdown', (e) => {
+      if(!isConnected() || snap.running){
         return;
       }
 
-      if(min > 119){
-        feedback('Höchstens 119 Minuten');
-        min = 119;
+      e.preventDefault();
+
+      const info = pointerInfo(e);
+
+      if(info.radius < TAP_GUARD_RADIUS){
+        return;
       }
 
-      if(send({type:'setRemaining', min})){
-        feedback('Stundenende geändert');
+      dragMode = nearestHandle(info);
+      dragging = true;
+      lastSent = null;
+
+      dial.setPointerCapture?.(e.pointerId);
+
+      applyDrag(info);
+    }, {passive:false});
+
+    dial.addEventListener('pointermove', (e) => {
+      if(!dragging){
+        return;
+      }
+
+      e.preventDefault();
+      applyDrag(pointerInfo(e));
+    }, {passive:false});
+
+    function endDrag(e){
+      if(!dragging){
+        return;
+      }
+
+      dragging = false;
+      dragMode = null;
+
+      dial.releasePointerCapture?.(e.pointerId);
+
+      if(heldSnap){
+        snap = heldSnap;
+        heldSnap = null;
+        render();
       }
     }
 
+    dial.addEventListener('pointerup', endDrag);
+    dial.addEventListener('pointercancel', endDrag);
+
+    // ---------- Tasten ----------
     function send(msg){
       if(conn && conn.open){
         conn.send(msg);
@@ -532,6 +814,29 @@
     toggleBtn.addEventListener('click', () => {
       send({type:'toggle'});
     });
+
+    // Verbleibende Minuten ab jetzt bis zum Stundenende (nach Ablauf: die eingestellte Gesamtzeit)
+    function remainingMin(){
+      const el = currentElapsed();
+
+      return Math.round((isDone(el) ? snap.totalSec : snap.totalSec - el) / 60);
+    }
+
+    function sendRemaining(min){
+      if(min < 1){
+        feedback('Mindestens 1 Minute');
+        return;
+      }
+
+      if(min > MAX_TOTAL_MIN){
+        feedback('Höchstens 119 Minuten');
+        min = MAX_TOTAL_MIN;
+      }
+
+      if(send({type:'setRemaining', min})){
+        feedback('Stundenende geändert');
+      }
+    }
 
     document.querySelectorAll('.endSteps button').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -576,6 +881,7 @@
       }
     });
 
+    // ---------- Verbindung ----------
     function scheduleRetry(){
       clearTimeout(retryTimer);
       retryTimer = setTimeout(connect, 3000);
@@ -606,7 +912,13 @@
 
       c.on('data', (msg) => {
         if(msg && msg.type === 'state'){
-          snap = msg;
+          // Während des Ziehens zeigt die Scheibe die eigene Eingabe; der Stand kommt danach
+          if(dragging){
+            heldSnap = msg;
+          }else{
+            snap = msg;
+          }
+
           snapAt = Date.now();
           render();
         }

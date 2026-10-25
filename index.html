@@ -255,6 +255,67 @@
       100%{ opacity:0; transform:scale(1); }
     }
 
+    #phaseFlash{
+      opacity:0;
+      pointer-events:none;
+      transform-box:view-box;
+      transform-origin:110px 110px;
+    }
+
+    #phaseFlash.show{
+      animation:phaseFlash 2.6s ease-out forwards;
+    }
+
+    @keyframes phaseFlash{
+      0%{ opacity:0; transform:scale(.4); }
+      10%{ opacity:1; transform:scale(1.12); }
+      18%{ transform:scale(1); }
+      30%{ transform:scale(1.06); }
+      40%{ transform:scale(1); }
+      80%{ opacity:1; }
+      100%{ opacity:0; transform:scale(1); }
+    }
+
+    /* Vorwarnung: letzte Minute vor Ende der Arbeitszeit bzw. der Auszeit */
+    .dial.warn #arcGreen{
+      animation:warnPulse 1s ease-in-out infinite;
+    }
+
+    @keyframes warnPulse{
+      0%, 100%{ opacity:.92; }
+      50%{ opacity:.35; }
+    }
+
+    .soundBtn{
+      background:#64748b;
+    }
+
+    .soundBtn .icoOff,
+    .soundBtn.muted .icoOn{
+      display:none;
+    }
+
+    .soundBtn.muted .icoOff{
+      display:block;
+    }
+
+    .soundBtn.muted{
+      background:#b45309;
+    }
+
+    .flyStar{
+      position:fixed;
+      left:0;
+      top:0;
+      z-index:10;
+      font-size:52px;
+      line-height:1;
+      color:#facc15;
+      text-shadow:0 0 2px #713f12, 0 2px 8px rgba(0,0,0,.35);
+      pointer-events:none;
+      will-change:transform, opacity;
+    }
+
     @media (orientation: portrait){
       .layout{
         max-width:760px;
@@ -494,6 +555,12 @@
 
           <circle cx="110" cy="110" r="72" fill="transparent" stroke="currentColor" stroke-width="2"/>
 
+          <g id="phaseFlash" aria-hidden="true">
+            <rect id="phaseFlashBg" x="14" y="80" width="192" height="60" rx="16" fill="#14532d" opacity="0.94"/>
+            <text id="phaseFlashText" x="110" y="122" text-anchor="middle" fill="#fff"
+                  style="font: 900 34px/1 ui-sans-serif, system-ui, -apple-system, Segoe UI; letter-spacing:1px;">AUSZEIT!</text>
+          </g>
+
           <g id="stepFlash" aria-hidden="true">
             <rect id="stepFlashBg" x="56" y="78" width="108" height="64" rx="16" fill="#0f172a" opacity="0.9"/>
             <text id="stepFlashText" x="110" y="128" text-anchor="middle" fill="#fff"
@@ -506,6 +573,17 @@
         <button id="mainBtn" class="controlBtn" aria-label="Timer starten"></button>
         <button id="resetBtn" class="resetBtn" aria-label="Timer zurücksetzen">
           <span aria-hidden="true">↺</span>
+        </button>
+        <button id="soundBtn" class="resetBtn soundBtn" aria-label="Ton ausschalten" aria-pressed="false">
+          <svg class="icoOn" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 9h4l5-4v14l-5-4H4z" fill="#fff"/>
+            <path d="M16.5 8.5a5 5 0 0 1 0 7"/>
+            <path d="M19 6a8.5 8.5 0 0 1 0 12"/>
+          </svg>
+          <svg class="icoOff" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 9h4l5-4v14l-5-4H4z" fill="#fff"/>
+            <path d="M17 9l5 6M22 9l-5 6"/>
+          </svg>
         </button>
       </div>
     </div>
@@ -565,6 +643,7 @@
 
     const mainBtn = document.getElementById('mainBtn');
     const resetBtn = document.getElementById('resetBtn');
+    const soundBtn = document.getElementById('soundBtn');
 
     const breakPlus = document.getElementById('breakPlus');
     const breakMinus = document.getElementById('breakMinus');
@@ -605,13 +684,12 @@
       t0:0,
       pausedAcc:0,
       pauseStart:0,
-      lastPhase:'work'
+      lastPhase:'work',
+      lastWarn:null
     };
 
     state.breakSec = Math.min(initialBreak * 60, state.totalSec, 60 * 60);
     state.workSec = state.totalSec - state.breakSec;
-
-    breakBig.textContent = Math.floor(state.breakSec / 60);
 
     (function drawTicks(){
       const cx = 110;
@@ -817,6 +895,33 @@
       }
     });
 
+    // Ton-Schalter: stumm schaltet alle Töne und die Vibration, die Anzeigen bleiben
+    let soundOn = true;
+
+    try{
+      soundOn = localStorage.getItem('ttSound') !== 'off';
+    }catch{}
+
+    function updateSoundBtn(){
+      soundBtn.classList.toggle('muted', !soundOn);
+      soundBtn.setAttribute('aria-pressed', soundOn ? 'false' : 'true');
+      soundBtn.setAttribute('aria-label', soundOn ? 'Ton ausschalten' : 'Ton einschalten');
+    }
+
+    function toggleSound(){
+      soundOn = !soundOn;
+
+      try{
+        localStorage.setItem('ttSound', soundOn ? 'on' : 'off');
+      }catch{}
+
+      if(soundOn){
+        unlockAudio();
+      }
+
+      updateSoundBtn();
+    }
+
     function playTone(ctx, freq, start, dur = 0.2, type = 'sine', gain = 0.28){
       const t = ctx.currentTime;
       const o = ctx.createOscillator();
@@ -837,7 +942,7 @@
 
     // Kurzer eigener Ton beim Verstellen der Auszeit: + steigt hell, − fällt tief
     function playStepSound(delta){
-      const ctx = getAudioCtx();
+      const ctx = soundOn ? getAudioCtx() : null;
 
       if(!ctx){
         return;
@@ -852,8 +957,20 @@
       }
     }
 
+    // Sanfter Doppelton eine Minute vor Ende der Arbeitszeit bzw. der Auszeit
+    function playWarnSound(){
+      const ctx = soundOn ? getAudioCtx() : null;
+
+      if(!ctx){
+        return;
+      }
+
+      playTone(ctx, 784, 0, 0.35, 'sine', 0.14);
+      playTone(ctx, 784, 0.45, 0.35, 'sine', 0.14);
+    }
+
     function playChime(phase){
-      const ctx = getAudioCtx();
+      const ctx = soundOn ? getAudioCtx() : null;
 
       if(!ctx){
         return;
@@ -888,11 +1005,62 @@
       }
     }
 
-    function onPhaseChange(phase){
-      playChime(phase);
+    const phaseFlash = document.getElementById('phaseFlash');
+    const phaseFlashBg = document.getElementById('phaseFlashBg');
+    const phaseFlashText = document.getElementById('phaseFlashText');
+
+    // Große Einblendung nur zu Beginn der Auszeit und am Ende des Timers
+    function showPhaseFlash(phase){
+      if(phase === 'break'){
+        phaseFlashText.textContent = 'AUSZEIT!';
+        phaseFlashBg.setAttribute('fill', '#14532d');
+      }else if(phase === 'done'){
+        phaseFlashText.textContent = 'FERTIG!';
+        phaseFlashBg.setAttribute('fill', '#1e3a8a');
+      }else{
+        return;
+      }
+
+      phaseFlash.classList.remove('show');
+      phaseFlash.getBoundingClientRect();
+      phaseFlash.classList.add('show');
     }
 
-    function getBlueHandlePosition(elapsed){
+    function onPhaseChange(phase){
+      playChime(phase);
+      showPhaseFlash(phase);
+    }
+
+    const WARN_SEC = 60;
+
+    // 'work' = letzte Minute der Arbeitszeit, 'break' = letzte Minute der Auszeit
+    function getWarnZone(elapsed){
+      if(!state.started || elapsed >= state.totalSec){
+        return null;
+      }
+
+      const remRedSec = state.workSec - elapsed;
+
+      if(remRedSec > 0){
+        return remRedSec <= WARN_SEC ? 'work' : null;
+      }
+
+      return (state.totalSec - elapsed) <= WARN_SEC ? 'break' : null;
+    }
+
+    // Geometrie der Scheibe: äußerer Ring 0–60 min, innerer Ring 61–119 min
+    const CX = 110;
+    const CY = 110;
+
+    const R_OUT_O = 98;
+    const R_OUT_I = 74;
+    const R_IN_O = 70;
+    const R_IN_I = 62;
+
+    const GRIP_OUTER = (R_OUT_O + R_OUT_I) / 2;
+    const GRIP_INNER = (R_IN_O + R_IN_I) / 2;
+
+    function ringGeometry(elapsed){
       const remRedSec = Math.max(0, state.workSec - elapsed);
       const remGreenSec = Math.max(0, state.totalSec - Math.max(elapsed, state.workSec));
 
@@ -907,27 +1075,17 @@
         354
       );
 
-      const cx = 110;
-      const cy = 110;
+      return {remRedSec, remGreenSec, degGreen, degRedOuter, degRedInner};
+    }
 
-      const rO = 98;
-      const rI = 74;
+    function getBlueHandlePosition(elapsed){
+      const g = ringGeometry(elapsed);
 
-      const r2O = 70;
-      const r2I = 62;
-
-      const gripROuter = (rO + rI) / 2;
-      const gripRInner = (r2O + r2I) / 2;
-
-      if(degRedInner > 0){
-        return polar(cx, cy, gripRInner, degRedInner);
+      if(g.degRedInner > 0){
+        return polar(CX, CY, GRIP_INNER, g.degRedInner);
       }
 
-      if(degRedOuter > 0){
-        return polar(cx, cy, gripROuter, degGreen + degRedOuter);
-      }
-
-      return polar(cx, cy, gripROuter, degGreen);
+      return polar(CX, CY, GRIP_OUTER, g.degGreen + g.degRedOuter);
     }
 
     // Schwarzer Griff sitzt am Ende des grünen Bogens (in der Auszeit-Phase also auf der Rest-Auszeit)
@@ -936,9 +1094,7 @@
         return Math.min(360, (state.breakSec / 3600) * 360);
       }
 
-      const remGreenSec = Math.max(0, state.totalSec - Math.max(elapsed, state.workSec));
-
-      return Math.min(360, (remGreenSec / 3600) * 360);
+      return ringGeometry(elapsed).degGreen;
     }
 
     // In der laufenden Auszeit-Phase fällt der schwarze Griff mit dem blauen zusammen – dann nur den blauen zeigen
@@ -973,51 +1129,29 @@
     }
 
     function updateDial(elapsed){
-      const remRedSec = Math.max(0, state.workSec - elapsed);
-      const remGreenSec = Math.max(0, state.totalSec - Math.max(elapsed, state.workSec));
-
-      const degGreen = Math.min(360, (remGreenSec / 3600) * 360);
-      const redDegTotal = (remRedSec / 3600) * 360;
-
-      const outerRedCapacity = Math.max(0, 360 - degGreen);
-      const degRedOuter = Math.min(redDegTotal, outerRedCapacity);
-
-      const degRedInner = Math.min(
-        Math.max(0, redDegTotal - outerRedCapacity),
-        354
-      );
-
-      const cx = 110;
-      const cy = 110;
-
-      const rO = 98;
-      const rI = 74;
-
-      const r2O = 70;
-      const r2I = 62;
+      const {remRedSec, remGreenSec, degGreen, degRedOuter, degRedInner} = ringGeometry(elapsed);
 
       arcGreen.setAttribute(
         'd',
-        degGreen > 0 ? sectorPath(cx, cy, rO, rI, 0, degGreen) : ''
+        degGreen > 0 ? sectorPath(CX, CY, R_OUT_O, R_OUT_I, 0, degGreen) : ''
       );
 
       arcRed.setAttribute(
         'd',
-        degRedOuter > 0 ? sectorPath(cx, cy, rO, rI, degGreen, degGreen + degRedOuter) : ''
+        degRedOuter > 0 ? sectorPath(CX, CY, R_OUT_O, R_OUT_I, degGreen, degGreen + degRedOuter) : ''
       );
 
       arcRed2.setAttribute(
         'd',
-        degRedInner > 0 ? sectorPath(cx, cy, r2O, r2I, 0, degRedInner) : ''
+        degRedInner > 0 ? sectorPath(CX, CY, R_IN_O, R_IN_I, 0, degRedInner) : ''
       );
+
+      dial.classList.toggle('warn', state.running && getWarnZone(elapsed) !== null);
 
       let centerFill = '#fff';
 
       if(remRedSec > 0){
-        innerFill.setAttribute(
-          'fill',
-          getComputedStyle(document.documentElement).getPropertyValue('--red') || '#ef4444'
-        );
+        innerFill.setAttribute('fill', 'var(--red)');
 
         centerLabel.textContent = 'ARBEITSZEIT';
 
@@ -1029,10 +1163,7 @@
         centerFill = '#fff';
 
       }else if(remGreenSec > 0){
-        innerFill.setAttribute(
-          'fill',
-          getComputedStyle(document.documentElement).getPropertyValue('--green') || '#16a34a'
-        );
+        innerFill.setAttribute('fill', 'var(--green)');
 
         centerLabel.textContent = 'AUSZEIT';
 
@@ -1062,9 +1193,7 @@
 
       const showHandles = !state.running;
 
-      const gripROuter = (rO + rI) / 2;
-
-      const pB = polar(cx, cy, gripROuter, getBoundaryDeg(elapsed));
+      const pB = polar(CX, CY, GRIP_OUTER, getBoundaryDeg(elapsed));
       const pT = getBlueHandlePosition(elapsed);
 
       handleBoundary.setAttribute('cx', pB.x.toFixed(2));
@@ -1128,6 +1257,9 @@
 
       state.running = true;
 
+      // Wer innerhalb der letzten Minute startet, bekommt keine nachträgliche Vorwarnung
+      state.lastWarn = getWarnZone(currentElapsed());
+
       unlockAudio();
       requestWakeLock();
 
@@ -1177,8 +1309,6 @@
       state.pauseStart = 0;
       state.lastPhase = 'work';
 
-      breakBig.textContent = DEFAULT_BREAK_MIN;
-
       save();
       updateUI();
     }
@@ -1199,6 +1329,14 @@
         state.lastPhase = phase;
         onPhaseChange(phase);
       }
+
+      const warn = getWarnZone(elapsed);
+
+      if(warn && warn !== state.lastWarn){
+        playWarnSound();
+      }
+
+      state.lastWarn = warn;
 
       if(elapsed >= state.totalSec){
         clearInterval(ticker);
@@ -1222,14 +1360,10 @@
     let dragMode = null;
 
     function getHandlePositions(){
-      const cx = 110;
-      const cy = 110;
-      const gripROuter = 86;
-
       const elapsed = currentElapsed();
 
       return {
-        boundary: polar(cx, cy, gripROuter, getBoundaryDeg(elapsed)),
+        boundary: polar(CX, CY, GRIP_OUTER, getBoundaryDeg(elapsed)),
         total: getBlueHandlePosition(elapsed)
       };
     }
@@ -1248,21 +1382,11 @@
     }
 
     function totalMinFromPointer(info){
-      if(info.radius < 74){
+      if(info.radius < R_OUT_I){
         return clamp(60 + Math.round(info.deg / 6), 61, MAX_TOTAL_MIN);
       }
 
-      let m = Math.round(info.deg / 6);
-
-      if(m === 0 && info.deg > 300){
-        m = 60;
-      }
-
-      if(m === 0){
-        m = 1;
-      }
-
-      return clamp(m, 1, 60);
+      return clamp(Math.round(info.deg / 6), 1, 60);
     }
 
     // Nach Ablauf beginnt jede Einstellung eine neue Runde statt die alte zu verlängern
@@ -1326,10 +1450,11 @@
         state.totalSec = state.workSec + state.breakSec;
       }
 
-      breakBig.textContent = Math.floor(state.breakSec / 60);
-
       updateUI();
     }
+
+    // Innerhalb dieses Radius (Zeitanzeige in der Mitte) verstellt ein Tipp nichts
+    const TAP_GUARD_RADIUS = R_IN_I - 6;
 
     dial.addEventListener('pointerdown', (e) => {
       if(state.running){
@@ -1339,6 +1464,10 @@
       e.preventDefault();
 
       const info = pointerInfo(e);
+
+      if(info.radius < TAP_GUARD_RADIUS){
+        return;
+      }
 
       dragMode = nearestHandle(info);
       dragging = true;
@@ -1434,6 +1563,49 @@
       stepFlash.classList.add('show');
 
       playStepSound(change);
+
+      if(change > 0){
+        flyStar();
+      }
+    }
+
+    const clockCard = document.querySelector('.clockCard');
+
+    // Belohnung: ein Stern fliegt von der Scheibe ins grüne Auszeit-Feld
+    function flyStar(){
+      const from = dial.getBoundingClientRect();
+      const to = clockCard.getBoundingClientRect();
+
+      const star = document.createElement('div');
+      star.className = 'flyStar';
+      star.textContent = '★';
+      star.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(star);
+
+      const size = 52;
+      const x0 = from.left + from.width / 2 - size / 2;
+      const y0 = from.top + from.height / 2 - size / 2;
+      const x1 = to.left + to.width / 2 - size / 2;
+      const y1 = to.top + to.height / 2 - size / 2;
+      const xm = (x0 + x1) / 2;
+      const ym = Math.min(y0, y1) - 60;
+
+      const anim = star.animate([
+        { transform:`translate(${x0}px, ${y0}px) scale(.4) rotate(0deg)`, opacity:0 },
+        { transform:`translate(${x0}px, ${y0}px) scale(1.4) rotate(40deg)`, opacity:1, offset:.2 },
+        { transform:`translate(${xm}px, ${ym}px) scale(1.1) rotate(200deg)`, opacity:1, offset:.6 },
+        { transform:`translate(${x1}px, ${y1}px) scale(.6) rotate(360deg)`, opacity:.9 }
+      ], { duration:1100, easing:'ease-in-out' });
+
+      anim.onfinish = () => {
+        star.remove();
+
+        clockCard.animate([
+          { transform:'scale(1)' },
+          { transform:'scale(1.12)' },
+          { transform:'scale(1)' }
+        ], { duration:350, easing:'ease-out' });
+      };
     }
 
     function addRepeater(btn, fn){
@@ -1469,6 +1641,9 @@
 
     mainBtn.addEventListener('click', toggleTimer);
     resetBtn.addEventListener('click', resetTimer);
+    soundBtn.addEventListener('click', toggleSound);
+
+    updateSoundBtn();
 
     setInterval(() => {
       if(!state.running){

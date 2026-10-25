@@ -68,11 +68,13 @@ So verstellst du die Auszeit vom eigenen iPad aus, ohne zum Schüler-iPad zu geh
 - den Timer des Schülers live sehen, auf **derselben Scheibe** wie am Schüler-iPad, dazu Auszeit-Minuten und Ende
 - **− Auszeit / + Auszeit** auslösen; auf dem Schüler-iPad erscheinen dann „±1“, Ton und Stern
 - **Start / Pause** auslösen
+- **Ton** am Schüler-iPad an- oder ausschalten
+- **Bedienung sperren / entsperren** (siehe unten)
+- **Verbindung aufheben** (siehe unten)
 
 *Nur wenn der Timer pausiert ist oder steht (Grundregel 2):*
 - **Grundeinstellung mit den Griffen auf der Scheibe**, genau wie am Schüler-iPad: blauer Griff = Stundenende, schwarzer Griff = Beginn der Auszeit. Das Schüler-iPad übernimmt jede Änderung sofort.
 - **↺ Zurücksetzen** auf 45 Minuten mit 10 Minuten Auszeit, mit Rückfrage
-- **Ton** am Schüler-iPad an- oder ausschalten
 
 Läuft der Timer, blendet die Lehrer-Seite diese Einstellungen aus. Das Schüler-iPad würde solche Befehle dann auch ablehnen.
 
@@ -84,6 +86,13 @@ Auf der Lehrer-Seite unter **Schüler-iPad → 🔒 Bedienung sperren**:
 - Die Sperre **bleibt bestehen**, auch wenn das Schüler-iPad neu geladen oder die App neu gestartet wird.
 - **🔓 Bedienung entsperren** auf der Lehrer-Seite hebt die Sperre auf.
 - **Notfall**, wenn die Verbindung weg ist: Auf dem Schüler-iPad oben rechts das kleine **Schloss** antippen und den **4-stelligen Notfall-Code** eingeben. Der Code steht nur auf der Lehrer-Seite und ist bei jeder Sperre neu.
+
+### Verbindung aufheben
+
+Auf der Lehrer-Seite unter **Schüler-iPad → Verbindung aufheben** (mit Rückfrage):
+- **Lehrer-Seite:** Sie trennt sich und verbindet sich nicht mehr automatisch neu.
+- **Schüler-iPad:** Es wird **entsperrt** und beendet seine Fernsteuerung. Der Timer selbst läuft unverändert weiter.
+- **Neu verbinden:** Auf dem Schüler-iPad wieder den QR-Knopf antippen und den Code erneut scannen. Der QR-Code bleibt derselbe, solange du dort nicht auf „Neuer Code“ tippst.
 
 **Gut zu wissen:**
 - **Das Schüler-iPad bleibt der eigentliche Timer.** Bricht die Verbindung ab, läuft es normal weiter. Die Lehrer-Seite verbindet sich automatisch neu.

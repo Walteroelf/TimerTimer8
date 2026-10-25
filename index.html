@@ -1981,6 +1981,11 @@
         toggleSound();
       }else if(msg.type === 'lock'){
         setLock(msg.on === true && /^\d{4}$/.test(String(msg.code)) ? String(msg.code) : null);
+      }else if(msg.type === 'bye'){
+        // Lehrer hat die Verbindung aufgehoben: Sperre lösen und Fernsteuerung beenden
+        setLock(null);
+        remoteOff();
+        return;
       }
 
       remoteSync(true);

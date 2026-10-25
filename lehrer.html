@@ -242,6 +242,17 @@
       letter-spacing:.15em;
     }
 
+    .disconnectBtn{
+      width:100%;
+      height:48px;
+      margin-top:14px;
+      font-weight:800;
+      font-size:1rem;
+      background:transparent;
+      color:var(--red);
+      border:2px solid var(--red);
+    }
+
     .secondary{
       height:52px;
       font-weight:800;
@@ -251,10 +262,17 @@
     }
 
     .manageRow{
-      display:grid;
-      grid-template-columns:1fr 1fr;
+      display:flex;
       gap:8px;
       margin-top:10px;
+    }
+
+    .manageRow button{
+      flex:1;
+    }
+
+    [hidden]{
+      display:none !important;
     }
   </style>
 </head>
@@ -334,10 +352,12 @@
       <button id="lockBtn" type="button" class="lockBtn">🔒 Bedienung sperren</button>
       <p id="lockInfo" class="note" hidden></p>
 
-      <div id="manageRow" class="manageRow">
-        <button id="resetBtn" type="button" class="secondary">↺ Zurücksetzen</button>
+      <div class="manageRow">
         <button id="soundBtn" type="button" class="secondary">Ton: an</button>
+        <button id="resetBtn" type="button" class="secondary">↺ Zurücksetzen</button>
       </div>
+
+      <button id="disconnectBtn" type="button" class="disconnectBtn">Verbindung aufheben</button>
     </section>
 
     <p id="setupNote" class="note" hidden>
@@ -345,7 +365,7 @@
     </p>
 
     <p id="runNote" class="note" hidden>
-      Stundenende, Zurücksetzen und Ton lassen sich nur einstellen, wenn der Timer pausiert ist.
+      Stundenende und Zurücksetzen gehen nur, wenn der Timer pausiert ist.
     </p>
 
     <p class="note">
@@ -388,7 +408,6 @@
     const feedbackEl = document.getElementById('feedback');
 
     const deviceCard = document.getElementById('deviceCard');
-    const manageRow = document.getElementById('manageRow');
     const setupNote = document.getElementById('setupNote');
     const runNote = document.getElementById('runNote');
     const lockBtn = document.getElementById('lockBtn');
@@ -622,7 +641,7 @@
       const canManage = connected && !snap.running;
 
       deviceCard.hidden = !connected;
-      manageRow.hidden = !canManage;
+      resetBtn.hidden = !canManage;
       setupNote.hidden = !canManage;
       runNote.hidden = !(connected && snap.running);
 
@@ -849,14 +868,75 @@
       }
     });
 
+    // Verbindung aufheben: Sperre lösen, Schüler-iPad beendet seine Fernsteuerung, hier wird nicht neu verbunden
+    let ended = false;
+
+    document.getElementById('disconnectBtn').addEventListener('click', () => {
+      const msg = snap && snap.lockCode
+        ? 'Verbindung zum Schüler-iPad aufheben?\nDie Sperre wird dabei aufgehoben.'
+        : 'Verbindung zum Schüler-iPad aufheben?';
+
+      if(!confirm(msg)){
+        return;
+      }
+
+      ended = true;
+      clearTimeout(retryTimer);
+
+      if(conn && conn.open){
+        conn.send({type:'bye'});
+      }
+
+      // Kurz warten, damit die Nachricht noch ankommt
+      setTimeout(() => {
+        try{
+          conn && conn.close();
+        }catch{}
+
+        if(peer && !peer.destroyed){
+          peer.destroy();
+        }
+      }, 500);
+
+      snap = null;
+      conn = null;
+
+      history.replaceState(null, '', location.pathname + location.search);
+
+      [arcGreen, arcRed, arcRed2].forEach((p) => p.setAttribute('d', ''));
+      innerFill.setAttribute('fill', 'transparent');
+      [centerLabel, centerMin, centerColon, centerSec].forEach((t) => t.setAttribute('fill', '#334155'));
+      centerLabel.textContent = 'GETRENNT';
+      centerMin.textContent = '--';
+      centerSec.textContent = '--';
+      extras.style.display = 'none';
+      handleBoundary.style.display = 'none';
+      handleTotal.style.display = 'none';
+      breakMinEl.textContent = '–';
+      endTimeEl.textContent = '–';
+
+      deviceCard.hidden = true;
+      setupNote.hidden = true;
+      runNote.hidden = true;
+      codeCard.hidden = false;
+
+      minusBtn.disabled = true;
+      plusBtn.disabled = true;
+      toggleBtn.disabled = true;
+
+      setConn('Getrennt');
+      feedback('Verbindung aufgehoben');
+    });
+
     resetBtn.addEventListener('click', () => {
       if(snap && !snap.running && confirm('Timer auf 45 Minuten mit 10 Minuten Auszeit zurücksetzen?')){
         send({type:'reset'});
       }
     });
 
+    // Ton geht immer, auch bei laufendem Timer
     soundBtn.addEventListener('click', () => {
-      if(snap && !snap.running){
+      if(snap){
         send({type:'sound', on: snap.soundOn === false});
       }
     });
@@ -870,7 +950,7 @@
     function connect(){
       clearTimeout(retryTimer);
 
-      if(!peer || peer.destroyed || !peer.open){
+      if(ended || !peer || peer.destroyed || !peer.open){
         return;
       }
 
@@ -891,6 +971,10 @@
       });
 
       c.on('data', (msg) => {
+        if(ended){
+          return;
+        }
+
         if(msg && msg.type === 'state'){
           // Während des Ziehens zeigt die Scheibe die eigene Eingabe; der Stand kommt danach
           if(dragging){
@@ -905,7 +989,7 @@
       });
 
       c.on('close', () => {
-        if(conn === c){
+        if(conn === c && !ended){
           setConn('Getrennt – verbinde neu …', 'err');
           scheduleRetry();
         }
@@ -930,13 +1014,17 @@
 
       peer.on('disconnected', () => {
         setTimeout(() => {
-          if(peer && !peer.destroyed){
+          if(!ended && peer && !peer.destroyed){
             peer.reconnect();
           }
         }, 3000);
       });
 
       peer.on('error', (err) => {
+        if(ended){
+          return;
+        }
+
         if(err.type === 'peer-unavailable'){
           setConn('Schüler-iPad nicht erreichbar', 'err');
           scheduleRetry();
@@ -966,6 +1054,13 @@
 
       location.hash = id;
       location.reload();
+    });
+
+    // Neuer Code in der Adresse (z. B. QR-Code erneut gescannt) – Seite frisch starten
+    window.addEventListener('hashchange', () => {
+      if(normalizeCode(location.hash.slice(1))){
+        location.reload();
+      }
     });
 
     targetId = normalizeCode(location.hash.slice(1));

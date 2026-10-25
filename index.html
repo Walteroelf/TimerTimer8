@@ -1,0 +1,1400 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+  <title>Timer</title>
+
+  <link rel="apple-touch-icon" href="timer-icon.png">
+  <link rel="icon" type="image/png" href="timer-icon.png">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Timer">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+  <style>
+    :root{
+      color-scheme: light dark;
+      --bg:#f6f7fb;
+      --fg:#0f172a;
+      --fg-soft:#334155;
+      --card:#fff;
+      --shadow:0 6px 18px rgba(0,0,0,.06);
+      --red:#ef4444;
+      --red2:#b91c1c;
+      --green:#16a34a;
+      --black:#111;
+      --blue:#2563eb;
+    }
+
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg:#0b1221;
+        --fg:#e5e7eb;
+        --fg-soft:#94a3b8;
+        --card:#0f172a;
+        --shadow:none;
+      }
+    }
+
+    *{
+      box-sizing:border-box;
+    }
+
+    html,body{
+      width:100%;
+      height:100%;
+      min-height:100%;
+      overflow:hidden;
+    }
+
+    body{
+      margin:0;
+      padding:
+        max(6px, env(safe-area-inset-top))
+        max(6px, env(safe-area-inset-right))
+        max(6px, env(safe-area-inset-bottom))
+        max(6px, env(safe-area-inset-left));
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:var(--bg);
+      color:var(--fg);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .layout{
+      width:100%;
+      height:100%;
+      max-width:1180px;
+      max-height:820px;
+      display:grid;
+      grid-template-columns:minmax(0, 1fr) minmax(150px, 220px);
+      gap:10px;
+      align-items:stretch;
+    }
+
+    .dialCard{
+      min-width:0;
+      min-height:0;
+      background:var(--card);
+      border-radius:14px;
+      padding:10px;
+      box-shadow:var(--shadow);
+      display:grid;
+      grid-template-rows:minmax(0, 1fr) auto;
+      gap:8px;
+    }
+
+    .dialWrap{
+      min-width:0;
+      min-height:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:100%;
+      height:100%;
+    }
+
+    .dial{
+      width:min(100%, calc(100dvh - 110px), 620px);
+      height:auto;
+      max-width:100%;
+      max-height:100%;
+      aspect-ratio:1 / 1;
+      touch-action:none;
+      color:#0f172a;
+      display:block;
+    }
+
+    .btnRow{
+      display:flex;
+      gap:12px;
+      justify-content:center;
+      align-items:center;
+      flex-wrap:nowrap;
+      flex-shrink:0;
+    }
+
+    .controlBtn,
+    .resetBtn{
+      width:72px;
+      height:58px;
+      border:none;
+      border-radius:14px;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      box-shadow:0 4px 12px rgba(0,0,0,.12);
+      touch-action:manipulation;
+      user-select:none;
+      position:relative;
+      background:var(--blue);
+      color:#fff;
+      flex:0 0 auto;
+    }
+
+    .controlBtn::before{
+      content:"";
+      width:0;
+      height:0;
+      border-top:14px solid transparent;
+      border-bottom:14px solid transparent;
+      border-left:23px solid #fff;
+      margin-left:5px;
+    }
+
+    .controlBtn.pauseState::before,
+    .controlBtn.pauseState::after{
+      content:"";
+      width:9px;
+      height:28px;
+      background:#fff;
+      border-radius:3px;
+      border:none;
+      margin:0 4px;
+    }
+
+    .controlBtn.pauseState::before{
+      margin-left:0;
+    }
+
+    .controlBtn.pauseState::after{
+      display:block;
+    }
+
+    .resetBtn{
+      font-size:2rem;
+      font-weight:900;
+      line-height:1;
+    }
+
+    .resetBtn span{
+      display:block;
+      transform:translateY(-1px);
+    }
+
+    .sideCard{
+      min-width:0;
+      min-height:0;
+      background:var(--card);
+      border-radius:14px;
+      padding:10px;
+      box-shadow:var(--shadow);
+      display:grid;
+      grid-template-rows:auto minmax(0, auto) auto;
+      align-content:center;
+      gap:8px;
+      align-items:center;
+      justify-items:center;
+    }
+
+    .bigStep{
+      width:92px;
+      height:92px;
+      border-radius:14px;
+      font-size:2.2rem;
+      font-weight:800;
+      border:none;
+      background:#eef2ff;
+      color:#111;
+      cursor:pointer;
+      touch-action:manipulation;
+      user-select:none;
+    }
+
+    .clockCard{
+      width:180px;
+      height:230px;
+      max-width:100%;
+      border:2px solid #000;
+      border-radius:12px;
+      background:var(--green);
+      display:grid;
+      align-items:center;
+      justify-items:center;
+      position:relative;
+    }
+
+    .clockFace{
+      width:150px;
+      height:150px;
+      max-width:82%;
+      max-height:82%;
+    }
+
+    .clockNum{
+      position:absolute;
+      top:50%;
+      left:50%;
+      transform:translate(-50%,-50%);
+      font-size:3.6rem;
+      font-weight:800;
+      color:#fff;
+    }
+
+    @media (orientation: portrait){
+      .layout{
+        max-width:760px;
+        max-height:none;
+        grid-template-columns:1fr;
+        grid-template-rows:minmax(0, 1fr) auto;
+        gap:8px;
+      }
+
+      .dialCard{
+        padding:8px;
+        gap:6px;
+      }
+
+      .dial{
+        width:min(96vw, calc(100dvh - 220px), 620px);
+        max-height:100%;
+      }
+
+      .sideCard{
+        padding:8px;
+        grid-template-columns:auto auto auto;
+        grid-template-rows:1fr;
+        gap:10px;
+        align-content:center;
+        justify-content:center;
+      }
+
+      #breakMinus{
+        order:1;
+      }
+
+      .clockCard{
+        order:2;
+      }
+
+      #breakPlus{
+        order:3;
+      }
+
+      .bigStep{
+        width:76px;
+        height:76px;
+        font-size:2rem;
+      }
+
+      .clockCard{
+        width:150px;
+        height:100px;
+      }
+
+      .clockFace{
+        width:90px;
+        height:90px;
+      }
+
+      .clockNum{
+        font-size:3rem;
+      }
+
+      .controlBtn,
+      .resetBtn{
+        width:68px;
+        height:54px;
+      }
+    }
+
+    @media (orientation: landscape) and (max-height: 760px){
+      .layout{
+        max-height:none;
+        grid-template-columns:minmax(0, 1fr) minmax(135px, 190px);
+      }
+
+      .dialCard{
+        padding:8px;
+        gap:6px;
+      }
+
+      .dial{
+        width:min(100%, calc(100dvh - 96px), 620px);
+      }
+
+      .sideCard{
+        padding:8px;
+        gap:6px;
+      }
+
+      .bigStep{
+        width:74px;
+        height:74px;
+        font-size:2rem;
+      }
+
+      .clockCard{
+        width:150px;
+        height:190px;
+      }
+
+      .clockFace{
+        width:120px;
+        height:120px;
+      }
+
+      .clockNum{
+        font-size:3rem;
+      }
+
+      .controlBtn,
+      .resetBtn{
+        width:68px;
+        height:54px;
+      }
+    }
+
+    @media (max-width: 700px), (max-height: 620px){
+      .layout{
+        gap:6px;
+      }
+
+      .dialCard,
+      .sideCard{
+        border-radius:12px;
+        padding:6px;
+      }
+
+      .btnRow{
+        gap:8px;
+      }
+
+      .controlBtn,
+      .resetBtn{
+        width:62px;
+        height:48px;
+        border-radius:12px;
+      }
+
+      .controlBtn::before{
+        border-top-width:12px;
+        border-bottom-width:12px;
+        border-left-width:20px;
+      }
+
+      .controlBtn.pauseState::before,
+      .controlBtn.pauseState::after{
+        width:8px;
+        height:24px;
+      }
+
+      .resetBtn{
+        font-size:1.75rem;
+      }
+
+      .bigStep{
+        width:64px;
+        height:64px;
+        font-size:1.8rem;
+      }
+
+      .clockCard{
+        width:128px;
+        height:88px;
+      }
+
+      .clockFace{
+        width:76px;
+        height:76px;
+      }
+
+      .clockNum{
+        font-size:2.5rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="layout" aria-label="Timer Oberfläche">
+
+    <div class="dialCard">
+      <div class="dialWrap">
+        <svg id="dial" class="dial" viewBox="0 0 220 220" role="img" aria-label="Eieruhr mit 119-Minuten-Skala">
+
+          <circle cx="110" cy="110" r="104" fill="currentColor" opacity="0.06"/>
+          <circle cx="110" cy="110" r="100" fill="#fff" stroke="currentColor" stroke-width="3"/>
+
+          <path id="arcGreen" fill="var(--green)" opacity="0.92"/>
+          <path id="arcRed" fill="var(--red)" opacity="0.92"/>
+
+          <circle id="innerFill" cx="110" cy="110" r="72" fill="transparent" opacity="0.92"/>
+
+          <path id="arcRed2" fill="var(--red2)" opacity="0.95"/>
+
+          <g id="ticks"></g>
+
+          <text id="centerLabel" x="110" y="86" text-anchor="middle" fill="#fff"
+                style="font: 800 15px/1.1 ui-sans-serif, system-ui, -apple-system, Segoe UI;">
+            ARBEITSZEIT
+          </text>
+
+          <text id="centerMin" x="100" y="113" text-anchor="end" fill="#fff"
+                style="font: 800 28px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing:0.5px;">
+            00
+          </text>
+
+          <text id="centerColon" x="110" y="113" text-anchor="middle" fill="#fff"
+                style="font: 800 28px/1 ui-monospace, SFMono-Regular, Menlo, monospace;">
+            :
+          </text>
+
+          <text id="centerSec" x="120" y="113" text-anchor="start" fill="#fff"
+                style="font: 800 28px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing:0.5px;">
+            00
+          </text>
+
+          <text id="centerTotalLabel" x="110" y="133" text-anchor="middle"
+                style="font: 800 6.8px/1 ui-sans-serif, system-ui, -apple-system, Segoe UI; letter-spacing:0.55px;">
+            GESAMTZEIT
+          </text>
+
+          <text id="centerTotalTime" x="110" y="145" text-anchor="middle"
+                style="font: 800 11.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing:0.35px;">
+            00:00
+          </text>
+
+          <text id="centerTargetLabel" x="110" y="157" text-anchor="middle"
+                style="font: 800 6.8px/1 ui-sans-serif, system-ui, -apple-system, Segoe UI; letter-spacing:0.55px;">
+            ZIELUHRZEIT
+          </text>
+
+          <text id="centerTargetTime" x="110" y="169" text-anchor="middle"
+                style="font: 800 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing:0.2px;">
+            00:00 Uhr
+          </text>
+
+          <circle id="handleBoundary" r="10" fill="var(--black)" stroke="#fff" stroke-width="3" style="display:none" />
+          <circle id="handleTotal" r="10" fill="var(--blue)" stroke="#fff" stroke-width="3" style="display:none" />
+
+          <circle cx="110" cy="110" r="72" fill="transparent" stroke="currentColor" stroke-width="2"/>
+        </svg>
+      </div>
+
+      <div class="btnRow">
+        <button id="mainBtn" class="controlBtn" aria-label="Timer starten"></button>
+        <button id="resetBtn" class="resetBtn" aria-label="Timer zurücksetzen">
+          <span aria-hidden="true">↺</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="sideCard" aria-label="Auszeit einstellen">
+      <button id="breakPlus" class="bigStep" aria-label="Auszeit plus 1 Minute">+</button>
+
+      <div class="clockCard" aria-live="polite" title="Auszeit grün">
+        <svg class="clockFace" viewBox="0 0 100 100" aria-hidden="true">
+          <circle cx="50" cy="50" r="45" stroke="#000" stroke-width="3" fill="none"/>
+
+          <g stroke="#000" stroke-width="2.5" opacity="0.9">
+            <line x1="50" y1="8" x2="50" y2="16"/>
+            <line x1="50" y1="84" x2="50" y2="92"/>
+            <line x1="8" y1="50" x2="16" y2="50"/>
+            <line x1="84" y1="50" x2="92" y2="50"/>
+          </g>
+
+          <g stroke="#000" stroke-width="1.6" opacity="0.7">
+            <line x1="23" y1="23" x2="28" y2="28"/>
+            <line x1="72" y1="72" x2="77" y2="77"/>
+            <line x1="23" y1="77" x2="28" y2="72"/>
+            <line x1="72" y1="28" x2="77" y2="23"/>
+          </g>
+        </svg>
+
+        <div id="breakBig" class="clockNum">10</div>
+      </div>
+
+      <button id="breakMinus" class="bigStep" aria-label="Auszeit minus 1 Minute">−</button>
+    </div>
+  </div>
+
+  <script>
+    const dial = document.getElementById('dial');
+    const ticksG = document.getElementById('ticks');
+
+    const arcGreen = document.getElementById('arcGreen');
+    const arcRed = document.getElementById('arcRed');
+    const arcRed2 = document.getElementById('arcRed2');
+
+    const innerFill = document.getElementById('innerFill');
+
+    const handleBoundary = document.getElementById('handleBoundary');
+    const handleTotal = document.getElementById('handleTotal');
+
+    const centerLabel = document.getElementById('centerLabel');
+    const centerMin = document.getElementById('centerMin');
+    const centerColon = document.getElementById('centerColon');
+    const centerSec = document.getElementById('centerSec');
+
+    const centerTotalLabel = document.getElementById('centerTotalLabel');
+    const centerTotalTime = document.getElementById('centerTotalTime');
+
+    const centerTargetLabel = document.getElementById('centerTargetLabel');
+    const centerTargetTime = document.getElementById('centerTargetTime');
+
+    const mainBtn = document.getElementById('mainBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    const breakPlus = document.getElementById('breakPlus');
+    const breakMinus = document.getElementById('breakMinus');
+    const breakBig = document.getElementById('breakBig');
+
+    const MAX_TOTAL_MIN = 119;
+    const DEFAULT_TOTAL_MIN = 45;
+    const DEFAULT_BREAK_MIN = 10;
+
+    let initialBreak = DEFAULT_BREAK_MIN;
+    let initialTotal = DEFAULT_TOTAL_MIN;
+
+    try{
+      const saved = JSON.parse(localStorage.getItem('ttHandles') || '{}');
+
+      if(Number.isFinite(saved.breakMin)){
+        initialBreak = saved.breakMin;
+      }
+
+      if(Number.isFinite(saved.totalMin)){
+        initialTotal = Math.min(MAX_TOTAL_MIN, Math.max(1, saved.totalMin));
+      }
+    }catch{}
+
+    function save(){
+      localStorage.setItem('ttHandles', JSON.stringify({
+        breakMin: Math.floor(state.breakSec / 60),
+        totalMin: Math.floor(state.totalSec / 60)
+      }));
+    }
+
+    const state = {
+      totalSec: Math.min(MAX_TOTAL_MIN, Math.max(1, initialTotal)) * 60,
+      breakSec: 0,
+      workSec: 0,
+      started:false,
+      running:false,
+      t0:0,
+      pausedAcc:0,
+      pauseStart:0,
+      lastPhase:'work'
+    };
+
+    state.breakSec = Math.min(initialBreak * 60, state.totalSec, 60 * 60);
+    state.workSec = state.totalSec - state.breakSec;
+
+    breakBig.textContent = Math.floor(state.breakSec / 60);
+
+    (function drawTicks(){
+      const cx = 110;
+      const cy = 110;
+      const rOuter = 100;
+      const long = 12;
+      const short = 6;
+
+      for(let i = 0; i < 60; i++){
+        const angle = i * 6;
+        const rad = (angle - 90) * Math.PI / 180;
+        const len = (i % 5 === 0) ? long : short;
+
+        const x1 = cx + (rOuter - len) * Math.cos(rad);
+        const y1 = cy + (rOuter - len) * Math.sin(rad);
+        const x2 = cx + rOuter * Math.cos(rad);
+        const y2 = cy + rOuter * Math.sin(rad);
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+
+        line.setAttribute('x1', x1.toFixed(2));
+        line.setAttribute('y1', y1.toFixed(2));
+        line.setAttribute('x2', x2.toFixed(2));
+        line.setAttribute('y2', y2.toFixed(2));
+        line.setAttribute('stroke', 'currentColor');
+        line.setAttribute('stroke-width', i % 5 === 0 ? '2' : '1');
+        line.setAttribute('opacity', i % 5 === 0 ? '0.95' : '0.8');
+
+        ticksG.appendChild(line);
+      }
+    })();
+
+    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+    function polar(cx, cy, r, deg){
+      const a = (deg - 90) * Math.PI / 180;
+
+      return {
+        x: cx + r * Math.cos(a),
+        y: cy + r * Math.sin(a)
+      };
+    }
+
+    function sectorPath(cx, cy, rO, rI, startDeg, endDeg){
+      if(endDeg <= startDeg){
+        return '';
+      }
+
+      if(endDeg - startDeg >= 360){
+        endDeg = startDeg + 359.999;
+      }
+
+      const large = (endDeg - startDeg) > 180 ? 1 : 0;
+
+      const p1 = polar(cx, cy, rO, startDeg);
+      const p2 = polar(cx, cy, rO, endDeg);
+      const p3 = polar(cx, cy, rI, endDeg);
+      const p4 = polar(cx, cy, rI, startDeg);
+
+      return `M ${p1.x} ${p1.y}
+              A ${rO} ${rO} 0 ${large} 1 ${p2.x} ${p2.y}
+              L ${p3.x} ${p3.y}
+              A ${rI} ${rI} 0 ${large} 0 ${p4.x} ${p4.y}
+              Z`;
+    }
+
+    function pointerInfo(e){
+      e.preventDefault();
+
+      const rect = dial.getBoundingClientRect();
+      const scale = 220 / rect.width;
+
+      const x = (e.clientX - (rect.left + rect.width / 2)) * scale;
+      const y = (e.clientY - (rect.top + rect.height / 2)) * scale;
+
+      let deg = (Math.atan2(y, x) * 180 / Math.PI) + 90;
+
+      if(deg < 0){
+        deg += 360;
+      }
+
+      return {
+        deg,
+        radius: Math.hypot(x, y),
+        vx: 110 + x,
+        vy: 110 + y
+      };
+    }
+
+    function currentElapsed(){
+      if(!state.started){
+        return 0;
+      }
+
+      const now = Date.now();
+
+      const paused = state.running
+        ? state.pausedAcc
+        : state.pausedAcc + (state.pauseStart ? (now - state.pauseStart) : 0);
+
+      return clamp(
+        Math.floor((now - state.t0 - paused) / 1000),
+        0,
+        state.totalSec
+      );
+    }
+
+    function fmtMMSS(s){
+      s = Math.max(0, Math.floor(s));
+
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+
+      return [
+        String(m).padStart(2, '0'),
+        String(sec).padStart(2, '0')
+      ];
+    }
+
+    function fmtClockTime(date){
+      const h = String(date.getHours()).padStart(2, '0');
+      const m = String(date.getMinutes()).padStart(2, '0');
+
+      return `${h}:${m} Uhr`;
+    }
+
+    function getPhase(elapsed){
+      if(elapsed < state.workSec){
+        return 'work';
+      }
+
+      if(elapsed < state.totalSec){
+        return 'break';
+      }
+
+      return 'done';
+    }
+
+    let audioCtx = null;
+
+    function getAudioCtx(){
+      const AC = window.AudioContext || window.webkitAudioContext;
+
+      if(!AC){
+        return null;
+      }
+
+      if(!audioCtx){
+        audioCtx = new AC();
+      }
+
+      if(audioCtx.state === 'suspended'){
+        audioCtx.resume();
+      }
+
+      return audioCtx;
+    }
+
+    // iOS gibt Web Audio nur frei, wenn es innerhalb einer Nutzeraktion angestoßen wird
+    function unlockAudio(){
+      const ctx = getAudioCtx();
+
+      if(!ctx){
+        return;
+      }
+
+      try{
+        const src = ctx.createBufferSource();
+
+        src.buffer = ctx.createBuffer(1, 1, 22050);
+        src.connect(ctx.destination);
+        src.start(0);
+      }catch{}
+    }
+
+    let wakeLock = null;
+
+    async function requestWakeLock(){
+      if(!('wakeLock' in navigator) || wakeLock){
+        return;
+      }
+
+      try{
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => {
+          wakeLock = null;
+        });
+      }catch{
+        wakeLock = null;
+      }
+    }
+
+    function releaseWakeLock(){
+      if(wakeLock){
+        wakeLock.release().catch(() => {});
+        wakeLock = null;
+      }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if(document.visibilityState === 'visible' && state.running){
+        requestWakeLock();
+      }
+    });
+
+    function playChime(phase){
+      const ctx = getAudioCtx();
+
+      if(!ctx){
+        return;
+      }
+
+      const t = ctx.currentTime;
+
+      const tone = (freq, start, dur = 0.2, type = 'sine', gain = 0.28) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+
+        o.type = type;
+        o.frequency.setValueAtTime(freq, t + start);
+
+        o.connect(g).connect(ctx.destination);
+
+        g.gain.setValueAtTime(0.0001, t + start);
+        g.gain.linearRampToValueAtTime(gain, t + start + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + start + dur);
+
+        o.start(t + start);
+        o.stop(t + start + dur + 0.03);
+      };
+
+      if(phase === 'break'){
+        tone(660, 0, 0.18, 'sine', 0.26);
+        tone(880, 0.12, 0.18, 'sine', 0.22);
+
+        if('vibrate' in navigator){
+          navigator.vibrate([120, 90, 120]);
+        }
+
+      }else if(phase === 'done'){
+        tone(740, 0, 0.18, 'triangle', 0.3);
+        tone(740, 0.25, 0.18, 'triangle', 0.3);
+        tone(740, 0.5, 0.18, 'triangle', 0.3);
+
+        if('vibrate' in navigator){
+          navigator.vibrate([200, 100, 200, 100, 200]);
+        }
+
+      }else{
+        tone(520, 0, 0.14, 'sine', 0.22);
+        tone(440, 0.12, 0.16, 'sine', 0.20);
+
+        if('vibrate' in navigator){
+          navigator.vibrate(80);
+        }
+      }
+    }
+
+    function onPhaseChange(phase){
+      playChime(phase);
+    }
+
+    function getBlueHandlePosition(elapsed){
+      const remRedSec = Math.max(0, state.workSec - elapsed);
+      const remGreenSec = Math.max(0, state.totalSec - Math.max(elapsed, state.workSec));
+
+      const degGreen = Math.min(360, (remGreenSec / 3600) * 360);
+      const redDegTotal = (remRedSec / 3600) * 360;
+
+      const outerRedCapacity = Math.max(0, 360 - degGreen);
+      const degRedOuter = Math.min(redDegTotal, outerRedCapacity);
+
+      const degRedInner = Math.min(
+        Math.max(0, redDegTotal - outerRedCapacity),
+        354
+      );
+
+      const cx = 110;
+      const cy = 110;
+
+      const rO = 98;
+      const rI = 74;
+
+      const r2O = 70;
+      const r2I = 62;
+
+      const gripROuter = (rO + rI) / 2;
+      const gripRInner = (r2O + r2I) / 2;
+
+      if(degRedInner > 0){
+        return polar(cx, cy, gripRInner, degRedInner);
+      }
+
+      if(degRedOuter > 0){
+        return polar(cx, cy, gripROuter, degGreen + degRedOuter);
+      }
+
+      return polar(cx, cy, gripROuter, degGreen);
+    }
+
+    // Schwarzer Griff sitzt am Ende des grünen Bogens (in der Auszeit-Phase also auf der Rest-Auszeit)
+    function getBoundaryDeg(elapsed){
+      if(state.started && elapsed >= state.totalSec){
+        return Math.min(360, (state.breakSec / 3600) * 360);
+      }
+
+      const remGreenSec = Math.max(0, state.totalSec - Math.max(elapsed, state.workSec));
+
+      return Math.min(360, (remGreenSec / 3600) * 360);
+    }
+
+    // In der laufenden Auszeit-Phase fällt der schwarze Griff mit dem blauen zusammen – dann nur den blauen zeigen
+    function isBoundaryHidden(elapsed){
+      return state.started && elapsed >= state.workSec && elapsed < state.totalSec;
+    }
+
+    function updateExtraDisplays(elapsed){
+      const showExtras = !state.running;
+
+      centerTotalLabel.style.display = showExtras ? 'block' : 'none';
+      centerTotalTime.style.display = showExtras ? 'block' : 'none';
+      centerTargetLabel.style.display = showExtras ? 'block' : 'none';
+      centerTargetTime.style.display = showExtras ? 'block' : 'none';
+
+      if(!showExtras){
+        return;
+      }
+
+      const remainingTotalSec = Math.max(0, state.totalSec - elapsed);
+      const [mm, ss] = fmtMMSS(remainingTotalSec);
+
+      centerTotalTime.textContent = `${mm}:${ss}`;
+
+      const targetDate = new Date(Date.now() + remainingTotalSec * 1000);
+      centerTargetTime.textContent = fmtClockTime(targetDate);
+
+      centerTotalLabel.setAttribute('fill', '#000');
+      centerTotalTime.setAttribute('fill', '#000');
+      centerTargetLabel.setAttribute('fill', '#000');
+      centerTargetTime.setAttribute('fill', '#000');
+    }
+
+    function updateDial(elapsed){
+      const remRedSec = Math.max(0, state.workSec - elapsed);
+      const remGreenSec = Math.max(0, state.totalSec - Math.max(elapsed, state.workSec));
+
+      const degGreen = Math.min(360, (remGreenSec / 3600) * 360);
+      const redDegTotal = (remRedSec / 3600) * 360;
+
+      const outerRedCapacity = Math.max(0, 360 - degGreen);
+      const degRedOuter = Math.min(redDegTotal, outerRedCapacity);
+
+      const degRedInner = Math.min(
+        Math.max(0, redDegTotal - outerRedCapacity),
+        354
+      );
+
+      const cx = 110;
+      const cy = 110;
+
+      const rO = 98;
+      const rI = 74;
+
+      const r2O = 70;
+      const r2I = 62;
+
+      arcGreen.setAttribute(
+        'd',
+        degGreen > 0 ? sectorPath(cx, cy, rO, rI, 0, degGreen) : ''
+      );
+
+      arcRed.setAttribute(
+        'd',
+        degRedOuter > 0 ? sectorPath(cx, cy, rO, rI, degGreen, degGreen + degRedOuter) : ''
+      );
+
+      arcRed2.setAttribute(
+        'd',
+        degRedInner > 0 ? sectorPath(cx, cy, r2O, r2I, 0, degRedInner) : ''
+      );
+
+      let centerFill = '#fff';
+
+      if(remRedSec > 0){
+        innerFill.setAttribute(
+          'fill',
+          getComputedStyle(document.documentElement).getPropertyValue('--red') || '#ef4444'
+        );
+
+        centerLabel.textContent = 'ARBEITSZEIT';
+
+        const [mm, ss] = fmtMMSS(remRedSec);
+
+        centerMin.textContent = mm;
+        centerSec.textContent = ss;
+
+        centerFill = '#fff';
+
+      }else if(remGreenSec > 0){
+        innerFill.setAttribute(
+          'fill',
+          getComputedStyle(document.documentElement).getPropertyValue('--green') || '#16a34a'
+        );
+
+        centerLabel.textContent = 'AUSZEIT';
+
+        const [mm, ss] = fmtMMSS(remGreenSec);
+
+        centerMin.textContent = mm;
+        centerSec.textContent = ss;
+
+        centerFill = '#fff';
+
+      }else{
+        innerFill.setAttribute('fill', 'transparent');
+
+        centerLabel.textContent = 'FERTIG';
+        centerMin.textContent = '00';
+        centerSec.textContent = '00';
+
+        centerFill = '#334155';
+      }
+
+      centerLabel.setAttribute('fill', centerFill);
+      centerMin.setAttribute('fill', centerFill);
+      centerSec.setAttribute('fill', centerFill);
+      centerColon.setAttribute('fill', centerFill);
+
+      updateExtraDisplays(elapsed);
+
+      const showHandles = !state.running;
+
+      const gripROuter = (rO + rI) / 2;
+
+      const pB = polar(cx, cy, gripROuter, getBoundaryDeg(elapsed));
+      const pT = getBlueHandlePosition(elapsed);
+
+      handleBoundary.setAttribute('cx', pB.x.toFixed(2));
+      handleBoundary.setAttribute('cy', pB.y.toFixed(2));
+
+      handleTotal.setAttribute('cx', pT.x.toFixed(2));
+      handleTotal.setAttribute('cy', pT.y.toFixed(2));
+
+      handleBoundary.style.display = showHandles && !isBoundaryHidden(elapsed) ? 'block' : 'none';
+      handleTotal.style.display = showHandles ? 'block' : 'none';
+    }
+
+    function updateUI(){
+      const elapsed = currentElapsed();
+
+      updateDial(elapsed);
+
+      if(state.running){
+        mainBtn.classList.add('pauseState');
+        mainBtn.setAttribute('aria-label', 'Timer pausieren');
+        resetBtn.style.display = 'none';
+      }else{
+        mainBtn.classList.remove('pauseState');
+        mainBtn.setAttribute('aria-label', 'Timer starten');
+        resetBtn.style.display = 'flex';
+      }
+    }
+
+    let ticker = null;
+
+    function start(){
+      if(state.running){
+        return;
+      }
+
+      if(state.started && currentElapsed() >= state.totalSec){
+        state.started = false;
+        state.t0 = 0;
+        state.pausedAcc = 0;
+        state.pauseStart = 0;
+      }
+
+      if(!state.started){
+        state.started = true;
+        state.t0 = Date.now();
+        state.pausedAcc = 0;
+        state.pauseStart = 0;
+
+        state.lastPhase = state.workSec > 0
+          ? 'work'
+          : (state.totalSec > 0 ? 'break' : 'done');
+
+      }else{
+        if(state.pauseStart){
+          state.pausedAcc += Date.now() - state.pauseStart;
+          state.pauseStart = 0;
+        }
+      }
+
+      state.running = true;
+
+      unlockAudio();
+      requestWakeLock();
+
+      if(ticker){
+        clearInterval(ticker);
+      }
+
+      ticker = setInterval(tick, 200);
+
+      updateUI();
+    }
+
+    function pause(){
+      if(!state.running){
+        return;
+      }
+
+      state.running = false;
+      state.pauseStart = Date.now();
+
+      if(ticker){
+        clearInterval(ticker);
+        ticker = null;
+      }
+
+      releaseWakeLock();
+
+      updateUI();
+    }
+
+    function resetTimer(){
+      if(ticker){
+        clearInterval(ticker);
+        ticker = null;
+      }
+
+      releaseWakeLock();
+
+      state.totalSec = DEFAULT_TOTAL_MIN * 60;
+      state.breakSec = DEFAULT_BREAK_MIN * 60;
+      state.workSec = state.totalSec - state.breakSec;
+
+      state.started = false;
+      state.running = false;
+      state.t0 = 0;
+      state.pausedAcc = 0;
+      state.pauseStart = 0;
+      state.lastPhase = 'work';
+
+      breakBig.textContent = DEFAULT_BREAK_MIN;
+
+      save();
+      updateUI();
+    }
+
+    function toggleTimer(){
+      if(state.running){
+        pause();
+      }else{
+        start();
+      }
+    }
+
+    function tick(){
+      const elapsed = currentElapsed();
+      const phase = getPhase(elapsed);
+
+      if(phase !== state.lastPhase){
+        state.lastPhase = phase;
+        onPhaseChange(phase);
+      }
+
+      if(elapsed >= state.totalSec){
+        clearInterval(ticker);
+        ticker = null;
+
+        // Uhr anhalten, damit die Zeit nach Ablauf nicht weiterläuft
+        state.running = false;
+        state.pauseStart = Date.now();
+
+        releaseWakeLock();
+
+        updateUI();
+
+        return;
+      }
+
+      updateUI();
+    }
+
+    let dragging = false;
+    let dragMode = null;
+
+    function getHandlePositions(){
+      const cx = 110;
+      const cy = 110;
+      const gripROuter = 86;
+
+      const elapsed = currentElapsed();
+
+      return {
+        boundary: polar(cx, cy, gripROuter, getBoundaryDeg(elapsed)),
+        total: getBlueHandlePosition(elapsed)
+      };
+    }
+
+    function nearestHandle(info){
+      if(isBoundaryHidden(currentElapsed())){
+        return 'total';
+      }
+
+      const pos = getHandlePositions();
+
+      const dB = Math.hypot(info.vx - pos.boundary.x, info.vy - pos.boundary.y);
+      const dT = Math.hypot(info.vx - pos.total.x, info.vy - pos.total.y);
+
+      return dB <= dT ? 'boundary' : 'total';
+    }
+
+    function totalMinFromPointer(info){
+      if(info.radius < 74){
+        return clamp(60 + Math.round(info.deg / 6), 61, MAX_TOTAL_MIN);
+      }
+
+      let m = Math.round(info.deg / 6);
+
+      if(m === 0 && info.deg > 300){
+        m = 60;
+      }
+
+      if(m === 0){
+        m = 1;
+      }
+
+      return clamp(m, 1, 60);
+    }
+
+    // Nach Ablauf beginnt jede Einstellung eine neue Runde statt die alte zu verlängern
+    function clearIfDone(){
+      if(state.started && currentElapsed() >= state.totalSec){
+        state.started = false;
+        state.t0 = 0;
+        state.pausedAcc = 0;
+        state.pauseStart = 0;
+        state.lastPhase = 'work';
+      }
+    }
+
+    function applyDrag(info){
+      clearIfDone();
+
+      const elapsed = currentElapsed();
+
+      if(dragMode === 'boundary'){
+        const maxBoundaryDeg = Math.min(360, (state.totalSec / 3600) * 360);
+        const d = clamp(info.deg, 0, maxBoundaryDeg);
+
+        const maxBreakMin = Math.min(60, Math.floor(state.totalSec / 60));
+        const breakMin = clamp(Math.round(d / 6), 0, maxBreakMin);
+
+        state.breakSec = breakMin * 60;
+        state.workSec = state.totalSec - state.breakSec;
+
+      }else{
+        const desiredRemainingMin = totalMinFromPointer(info);
+
+        const maxRemainingWholeMin = Math.max(
+          1,
+          Math.floor((MAX_TOTAL_MIN * 60 - elapsed) / 60)
+        );
+
+        const remainingMin = clamp(
+          desiredRemainingMin,
+          1,
+          maxRemainingWholeMin
+        );
+
+        const desiredRemainingSec = remainingMin * 60;
+
+        const keepGreen = state.breakSec;
+
+        state.totalSec = elapsed + desiredRemainingSec;
+
+        state.breakSec = Math.min(
+          keepGreen,
+          desiredRemainingSec,
+          60 * 60
+        );
+
+        state.workSec = state.totalSec - state.breakSec;
+
+        const remWorkSec = Math.max(0, state.workSec - elapsed);
+        const roundedRemWorkSec = Math.round(remWorkSec / 60) * 60;
+
+        state.workSec = elapsed + roundedRemWorkSec;
+        state.totalSec = state.workSec + state.breakSec;
+      }
+
+      breakBig.textContent = Math.floor(state.breakSec / 60);
+
+      updateUI();
+    }
+
+    dial.addEventListener('pointerdown', (e) => {
+      if(state.running){
+        return;
+      }
+
+      e.preventDefault();
+
+      const info = pointerInfo(e);
+
+      dragMode = nearestHandle(info);
+      dragging = true;
+
+      dial.setPointerCapture?.(e.pointerId);
+
+      applyDrag(info);
+    }, {passive:false});
+
+    dial.addEventListener('pointermove', (e) => {
+      if(!dragging || state.running){
+        return;
+      }
+
+      e.preventDefault();
+
+      const info = pointerInfo(e);
+
+      applyDrag(info);
+    }, {passive:false});
+
+    function endDrag(e){
+      if(!dragging){
+        return;
+      }
+
+      dragging = false;
+      dragMode = null;
+
+      dial.releasePointerCapture?.(e.pointerId);
+
+      save();
+    }
+
+    dial.addEventListener('pointerup', endDrag);
+    dial.addEventListener('pointercancel', endDrag);
+
+    window.addEventListener('blur', () => {
+      dragging = false;
+      dragMode = null;
+    });
+
+    function stepBreak(delta){
+      if(state.running){
+        return;
+      }
+
+      clearIfDone();
+
+      const maxBreakMin = Math.min(60, Math.floor(state.totalSec / 60));
+      const v = clamp(Math.floor(state.breakSec / 60) + delta, 0, maxBreakMin);
+
+      state.breakSec = v * 60;
+      state.workSec = state.totalSec - state.breakSec;
+
+      breakBig.textContent = v;
+
+      updateUI();
+      save();
+    }
+
+    function addRepeater(btn, fn){
+      let h = null;
+      let r = null;
+
+      const down = (e) => {
+        e.preventDefault();
+
+        fn();
+
+        h = setTimeout(() => {
+          r = setInterval(fn, 120);
+        }, 400);
+      };
+
+      const up = () => {
+        clearTimeout(h);
+        clearInterval(r);
+
+        h = null;
+        r = null;
+      };
+
+      btn.addEventListener('pointerdown', down, {passive:false});
+      window.addEventListener('pointerup', up);
+      window.addEventListener('pointercancel', up);
+      window.addEventListener('blur', up);
+    }
+
+    addRepeater(breakPlus, () => stepBreak(+1));
+    addRepeater(breakMinus, () => stepBreak(-1));
+
+    mainBtn.addEventListener('click', toggleTimer);
+    resetBtn.addEventListener('click', resetTimer);
+
+    setInterval(() => {
+      if(!state.running){
+        updateUI();
+      }
+    }, 15000);
+
+    updateUI();
+  </script>
+</body>
+</html>

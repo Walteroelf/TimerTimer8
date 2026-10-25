@@ -71,12 +71,19 @@ So verstellst du die Auszeit vom eigenen iPad aus, ohne zum Schüler-iPad zu geh
 
 *Nur wenn der Timer pausiert ist oder steht (Grundregel 2):*
 - **Grundeinstellung mit den Griffen auf der Scheibe**, genau wie am Schüler-iPad: blauer Griff = Stundenende, schwarzer Griff = Beginn der Auszeit. Das Schüler-iPad übernimmt jede Änderung sofort.
-- **Stundenende** mit −5 / −1 / +1 / +5 Minuten verschieben
-- **Stundenende** direkt als Uhrzeit setzen, z. B. „12:00“, dann **Ende setzen**
 - **↺ Zurücksetzen** auf 45 Minuten mit 10 Minuten Auszeit, mit Rückfrage
 - **Ton** am Schüler-iPad an- oder ausschalten
 
 Läuft der Timer, blendet die Lehrer-Seite diese Einstellungen aus. Das Schüler-iPad würde solche Befehle dann auch ablehnen.
+
+### Schüler-iPad sperren (Schutz vor Manipulation)
+
+Auf der Lehrer-Seite unter **Schüler-iPad → 🔒 Bedienung sperren**:
+- Das Schüler-iPad zeigt dann **nur noch den Timer**: keine Knöpfe, keine +/−-Tasten, keine Griffe. Berührungen bewirken nichts.
+- **Bedient wird nur noch vom Lehrer-iPad**, auch die Auszeit-Änderungen. Auf dem Schüler-iPad erscheinen weiterhin „±1“, Ton und Stern.
+- Die Sperre **bleibt bestehen**, auch wenn das Schüler-iPad neu geladen oder die App neu gestartet wird.
+- **🔓 Bedienung entsperren** auf der Lehrer-Seite hebt die Sperre auf.
+- **Notfall**, wenn die Verbindung weg ist: Auf dem Schüler-iPad oben rechts das kleine **Schloss** antippen und den **4-stelligen Notfall-Code** eingeben. Der Code steht nur auf der Lehrer-Seite und ist bei jeder Sperre neu.
 
 **Gut zu wissen:**
 - **Das Schüler-iPad bleibt der eigentliche Timer.** Bricht die Verbindung ab, läuft es normal weiter. Die Lehrer-Seite verbindet sich automatisch neu.

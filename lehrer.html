@@ -214,18 +214,34 @@
       font-size:1.1rem;
     }
 
-    .manage .note{
-      margin-bottom:12px;
-    }
-
-    .endSteps{
-      display:grid;
-      grid-template-columns:repeat(4, 1fr);
-      gap:8px;
+    .manage h2{
       margin-bottom:10px;
     }
 
-    .endSteps button,
+    .manage .note{
+      margin-top:8px;
+    }
+
+    .lockBtn{
+      width:100%;
+      height:56px;
+      font-weight:800;
+      font-size:1.05rem;
+      background:var(--track);
+      color:var(--fg);
+    }
+
+    .lockBtn.on{
+      background:#b45309;
+      color:#fff;
+    }
+
+    .lockCode{
+      font:800 1.15rem ui-monospace, SFMono-Regular, Menlo, monospace;
+      color:var(--fg);
+      letter-spacing:.15em;
+    }
+
     .secondary{
       height:52px;
       font-weight:800;
@@ -312,30 +328,21 @@
 
     <div id="feedback" class="feedback" aria-live="polite"></div>
 
-    <section id="manageCard" class="card manage" hidden>
-      <h2>Einstellen</h2>
-      <p class="note">
-        Wie am Schüler-iPad: <b>blauer Griff</b> = Stundenende, <b>schwarzer Griff</b> = Beginn der Auszeit.
-        Oder hier genauer:
-      </p>
+    <section id="deviceCard" class="card manage" hidden>
+      <h2>Schüler-iPad</h2>
 
-      <div class="endSteps">
-        <button type="button" data-d="-5">−5 min</button>
-        <button type="button" data-d="-1">−1 min</button>
-        <button type="button" data-d="1">+1 min</button>
-        <button type="button" data-d="5">+5 min</button>
-      </div>
+      <button id="lockBtn" type="button" class="lockBtn">🔒 Bedienung sperren</button>
+      <p id="lockInfo" class="note" hidden></p>
 
-      <form id="endForm" class="codeForm">
-        <input id="endInput" type="time" aria-label="Ende um Uhrzeit">
-        <button type="submit">Ende setzen</button>
-      </form>
-
-      <div class="manageRow">
+      <div id="manageRow" class="manageRow">
         <button id="resetBtn" type="button" class="secondary">↺ Zurücksetzen</button>
         <button id="soundBtn" type="button" class="secondary">Ton: an</button>
       </div>
     </section>
+
+    <p id="setupNote" class="note" hidden>
+      Einstellen wie am Schüler-iPad: <b>blauer Griff</b> = Stundenende, <b>schwarzer Griff</b> = Beginn der Auszeit.
+    </p>
 
     <p id="runNote" class="note" hidden>
       Stundenende, Zurücksetzen und Ton lassen sich nur einstellen, wenn der Timer pausiert ist.
@@ -380,10 +387,12 @@
     const toggleBtn = document.getElementById('toggle');
     const feedbackEl = document.getElementById('feedback');
 
-    const manageCard = document.getElementById('manageCard');
+    const deviceCard = document.getElementById('deviceCard');
+    const manageRow = document.getElementById('manageRow');
+    const setupNote = document.getElementById('setupNote');
     const runNote = document.getElementById('runNote');
-    const endForm = document.getElementById('endForm');
-    const endInput = document.getElementById('endInput');
+    const lockBtn = document.getElementById('lockBtn');
+    const lockInfo = document.getElementById('lockInfo');
     const resetBtn = document.getElementById('resetBtn');
     const soundBtn = document.getElementById('soundBtn');
 
@@ -612,15 +621,24 @@
       // Einstellen nur bei stehendem Timer (Grundregel: Ende nur pausiert änderbar)
       const canManage = connected && !snap.running;
 
-      manageCard.hidden = !canManage;
+      deviceCard.hidden = !connected;
+      manageRow.hidden = !canManage;
+      setupNote.hidden = !canManage;
       runNote.hidden = !(connected && snap.running);
 
-      if(canManage){
-        soundBtn.textContent = snap.soundOn === false ? 'Ton: aus' : 'Ton: an';
+      soundBtn.textContent = snap.soundOn === false ? 'Ton: aus' : 'Ton: an';
 
-        if(document.activeElement !== endInput){
-          endInput.value = fmtClock(end).slice(0, 5);
-        }
+      // Sperre: der Notfall-Code steht nur hier auf der Lehrer-Seite
+      const locked = !!snap.lockCode;
+
+      lockBtn.classList.toggle('on', locked);
+      lockBtn.textContent = locked ? '🔓 Bedienung entsperren' : '🔒 Bedienung sperren';
+      lockInfo.hidden = !locked;
+
+      if(locked){
+        lockInfo.innerHTML = 'Gesperrt: Das Schüler-iPad zeigt nur den Timer und lässt sich nicht bedienen. '
+          + 'Notfall-Code zum Entsperren am Schüler-iPad (Schloss oben rechts antippen): '
+          + `<span class="lockCode">${snap.lockCode}</span>`;
       }
     }
 
@@ -815,58 +833,20 @@
       send({type:'toggle'});
     });
 
-    // Verbleibende Minuten ab jetzt bis zum Stundenende (nach Ablauf: die eingestellte Gesamtzeit)
-    function remainingMin(){
-      const el = currentElapsed();
-
-      return Math.round((isDone(el) ? snap.totalSec : snap.totalSec - el) / 60);
-    }
-
-    function sendRemaining(min){
-      if(min < 1){
-        feedback('Mindestens 1 Minute');
+    lockBtn.addEventListener('click', () => {
+      if(!snap){
         return;
       }
 
-      if(min > MAX_TOTAL_MIN){
-        feedback('Höchstens 119 Minuten');
-        min = MAX_TOTAL_MIN;
-      }
+      if(snap.lockCode){
+        send({type:'lock', on:false});
+      }else{
+        const code = String(1000 + crypto.getRandomValues(new Uint16Array(1))[0] % 9000);
 
-      if(send({type:'setRemaining', min})){
-        feedback('Stundenende geändert');
-      }
-    }
-
-    document.querySelectorAll('.endSteps button').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        if(snap && !snap.running){
-          sendRemaining(remainingMin() + Number(btn.dataset.d));
+        if(send({type:'lock', on:true, code})){
+          feedback('Schüler-iPad gesperrt');
         }
-      });
-    });
-
-    endForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-
-      const m = /^(\d{1,2}):(\d{2})$/.exec(endInput.value);
-
-      if(!m || !snap || snap.running){
-        return;
       }
-
-      const target = new Date();
-      target.setHours(Number(m[1]), Number(m[2]), 0, 0);
-
-      const min = Math.round((target - Date.now()) / 60000);
-
-      if(min < 1){
-        feedback('Diese Uhrzeit ist schon vorbei');
-        return;
-      }
-
-      endInput.blur();
-      sendRemaining(min);
     });
 
     resetBtn.addEventListener('click', () => {

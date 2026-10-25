@@ -307,6 +307,34 @@
       background:#0f766e;
     }
 
+    /* Gesperrt vom Lehrer-iPad: keine Bedienelemente, nur die Anzeige */
+    body.locked .btnRow,
+    body.locked .bigStep{
+      visibility:hidden;
+    }
+
+    .lockBadge{
+      position:fixed;
+      top:max(8px, env(safe-area-inset-top));
+      right:max(8px, env(safe-area-inset-right));
+      z-index:5;
+      width:34px;
+      height:34px;
+      border:none;
+      border-radius:50%;
+      background:transparent;
+      color:var(--fg-soft);
+      opacity:.55;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+    }
+
+    .lockBadge[hidden]{
+      display:none;
+    }
+
     .remoteDot{
       position:fixed;
       top:max(10px, env(safe-area-inset-top));
@@ -740,6 +768,13 @@
   </div>
 
   <div id="remoteDot" class="remoteDot" title="Lehrer-iPad verbunden" aria-label="Lehrer-iPad verbunden" role="status"></div>
+
+  <button id="lockBadge" class="lockBadge" type="button" aria-label="Gesperrt vom Lehrer-iPad" hidden>
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="5" y="11" width="14" height="10" rx="2" fill="currentColor" stroke="none"/>
+      <path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+    </svg>
+  </button>
 
   <div id="remoteOverlay" class="remoteOverlay" role="dialog" aria-modal="true" aria-labelledby="remoteTitle" hidden>
     <div class="remoteBox">
@@ -1331,7 +1366,7 @@
 
       updateExtraDisplays(elapsed);
 
-      const showHandles = !state.running;
+      const showHandles = !state.running && !lockCode;
 
       const pB = polar(CX, CY, GRIP_OUTER, getBoundaryDeg(elapsed));
       const pT = getBlueHandlePosition(elapsed);
@@ -1611,7 +1646,7 @@
     const TAP_GUARD_RADIUS = R_IN_I - 6;
 
     dial.addEventListener('pointerdown', (e) => {
-      if(state.running){
+      if(state.running || lockCode){
         return;
       }
 
@@ -1769,6 +1804,10 @@
       const down = (e) => {
         e.preventDefault();
 
+        if(lockCode){
+          return;
+        }
+
         fn();
 
         h = setTimeout(() => {
@@ -1885,7 +1924,8 @@
         workSec: state.workSec,
         breakSec: state.breakSec,
         elapsed: currentElapsed(),
-        soundOn
+        soundOn,
+        lockCode
       };
     }
 
@@ -1898,7 +1938,7 @@
       }
 
       const snap = remoteSnapshot();
-      const sig = [snap.started, snap.running, snap.totalSec, snap.workSec, snap.breakSec, snap.soundOn].join('|');
+      const sig = [snap.started, snap.running, snap.totalSec, snap.workSec, snap.breakSec, snap.soundOn, snap.lockCode].join('|');
       const now = Date.now();
 
       if(!force && sig === lastRemoteSig && now - lastRemoteSent < 1000){
@@ -1939,6 +1979,8 @@
         resetTimer();
       }else if(msg.type === 'sound' && typeof msg.on === 'boolean' && msg.on !== soundOn){
         toggleSound();
+      }else if(msg.type === 'lock'){
+        setLock(msg.on === true && /^\d{4}$/.test(String(msg.code)) ? String(msg.code) : null);
       }
 
       remoteSync(true);
@@ -2100,6 +2142,62 @@
       closeRemote();
     }
 
+    // ---------------------------------------------------------------
+    // Sperre: Das Lehrer-iPad kann die Bedienung hier sperren, damit nur
+    // noch die Lehrer-Seite den Timer steuert. Notfall: Schloss antippen
+    // und den 4-stelligen Code eingeben, der auf der Lehrer-Seite steht.
+    // ---------------------------------------------------------------
+    const lockBadge = document.getElementById('lockBadge');
+
+    let lockCode = null;
+
+    try{
+      lockCode = localStorage.getItem('ttLock');
+    }catch{}
+
+    function applyLock(){
+      document.body.classList.toggle('locked', !!lockCode);
+      lockBadge.hidden = !lockCode;
+
+      if(lockCode){
+        closeRemote();
+      }
+
+      updateUI();
+    }
+
+    function setLock(code){
+      lockCode = code;
+
+      try{
+        if(code){
+          localStorage.setItem('ttLock', code);
+        }else{
+          localStorage.removeItem('ttLock');
+        }
+      }catch{}
+
+      applyLock();
+    }
+
+    lockBadge.addEventListener('click', () => {
+      const input = prompt('Gesperrt vom Lehrer-iPad.\nZum Entsperren den Notfall-Code von der Lehrer-Seite eingeben:');
+
+      if(input !== null && input.trim() === lockCode){
+        setLock(null);
+        remoteSync(true);
+      }
+    });
+
+    // iOS gibt Töne erst nach einer Berührung frei – auch bei gesperrtem Gerät reicht irgendein Tipp
+    document.addEventListener('pointerdown', () => {
+      if(!audioCtx || audioCtx.state !== 'running'){
+        unlockAudio();
+      }
+    });
+
+    applyLock();
+
     remoteBtn.addEventListener('click', openRemote);
     document.getElementById('remoteClose').addEventListener('click', closeRemote);
     document.getElementById('remoteNew').addEventListener('click', newRemoteCode);
@@ -2115,9 +2213,15 @@
       }
     }catch{}
 
-    mainBtn.addEventListener('click', toggleTimer);
-    resetBtn.addEventListener('click', resetTimer);
-    soundBtn.addEventListener('click', toggleSound);
+    const unlessLocked = (fn) => () => {
+      if(!lockCode){
+        fn();
+      }
+    };
+
+    mainBtn.addEventListener('click', unlessLocked(toggleTimer));
+    resetBtn.addEventListener('click', unlessLocked(resetTimer));
+    soundBtn.addEventListener('click', unlessLocked(toggleSound));
 
     updateSoundBtn();
 

@@ -469,7 +469,7 @@
 
     .remoteCode{
       margin:8px 0 0;
-      font:600 .85rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+      font:600 .85rem/1.2 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; font-variant-numeric: tabular-nums;
       color:var(--fg-soft);
     }
 
@@ -721,18 +721,18 @@
             ARBEITSZEIT
           </text>
 
-          <text id="centerMin" x="100" y="113" text-anchor="end" fill="#fff"
-                style="font: 800 28px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing:0.5px;">
+          <text id="centerMin" x="104" y="113" text-anchor="end" fill="#fff"
+                style="font: 800 28px/1 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; font-variant-numeric: tabular-nums; letter-spacing:0.5px;">
             00
           </text>
 
           <text id="centerColon" x="110" y="113" text-anchor="middle" fill="#fff"
-                style="font: 800 28px/1 ui-monospace, SFMono-Regular, Menlo, monospace;">
+                style="font: 800 28px/1 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; font-variant-numeric: tabular-nums;">
             :
           </text>
 
-          <text id="centerSec" x="120" y="113" text-anchor="start" fill="#fff"
-                style="font: 800 28px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing:0.5px;">
+          <text id="centerSec" x="116" y="113" text-anchor="start" fill="#fff"
+                style="font: 800 28px/1 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; font-variant-numeric: tabular-nums; letter-spacing:0.5px;">
             00
           </text>
 
@@ -742,7 +742,7 @@
           </text>
 
           <text id="centerTotalTime" x="110" y="145" text-anchor="middle"
-                style="font: 800 11.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing:0.35px;">
+                style="font: 800 11.5px/1 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; font-variant-numeric: tabular-nums; letter-spacing:0.35px;">
             00:00
           </text>
 
@@ -752,7 +752,7 @@
           </text>
 
           <text id="centerTargetTime" x="110" y="169" text-anchor="middle"
-                style="font: 800 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing:0.2px;">
+                style="font: 800 10px/1 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; font-variant-numeric: tabular-nums; letter-spacing:0.2px;">
             00:00 Uhr
           </text>
 
@@ -778,7 +778,10 @@
       <div class="btnRow">
         <button id="mainBtn" class="controlBtn" aria-label="Timer starten"></button>
         <button id="resetBtn" class="resetBtn" aria-label="Timer zurücksetzen">
-          <span aria-hidden="true">↺</span>
+          <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/>
+            <path d="M4.5 3.5v4h4"/>
+          </svg>
         </button>
         <button id="soundBtn" class="resetBtn soundBtn" aria-label="Ton ausschalten" aria-pressed="false">
           <svg class="icoOn" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -890,7 +893,7 @@
       <h3>5. Die Knöpfe unter der Scheibe</h3>
       <p>Außer ▶/❚❚ sind sie nur sichtbar, wenn der Timer angehalten ist:</p>
       <ul>
-        <li><b>↺</b> – zurück auf 45 Minuten mit 10 Minuten Auszeit.</li>
+        <li><b>Pfeil im Kreis</b> – zurück auf 45 Minuten mit 10 Minuten Auszeit.</li>
         <li><b>Lautsprecher</b> – Ton an oder aus (orange = aus).</li>
         <li><b>QR-Code</b> – Lehrer-iPad verbinden (siehe 6.).</li>
         <li><b>i</b> – diese Anleitung.</li>

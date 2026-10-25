@@ -226,6 +226,48 @@
       font-weight:800;
     }
 
+    .manage h2{
+      margin:0 0 4px;
+      font-size:1.1rem;
+    }
+
+    .endNow{
+      margin:0 0 12px;
+      color:var(--fg-soft);
+      font-weight:600;
+    }
+
+    .endNow b{
+      color:var(--fg);
+    }
+
+    .endSteps{
+      display:grid;
+      grid-template-columns:repeat(4, 1fr);
+      gap:8px;
+      margin-bottom:10px;
+    }
+
+    .endSteps button,
+    .secondary{
+      height:52px;
+      font-weight:800;
+      font-size:1rem;
+      background:var(--track);
+      color:var(--fg);
+    }
+
+    .manageRow{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      margin-top:10px;
+    }
+
+    .codeForm input[type="time"]{
+      font-family:inherit;
+    }
+
     @media (max-width: 420px){
       .status{
         grid-template-columns:1fr;
@@ -277,9 +319,34 @@
 
     <div id="feedback" class="feedback" aria-live="polite"></div>
 
+    <section id="manageCard" class="card manage" hidden>
+      <h2>Stundenende</h2>
+      <p class="endNow">Ende: <b id="endBig">–</b> · noch <span id="remTotal">–</span> min</p>
+
+      <div class="endSteps">
+        <button type="button" data-d="-5">−5 min</button>
+        <button type="button" data-d="-1">−1 min</button>
+        <button type="button" data-d="1">+1 min</button>
+        <button type="button" data-d="5">+5 min</button>
+      </div>
+
+      <form id="endForm" class="codeForm">
+        <input id="endInput" type="time" aria-label="Ende um Uhrzeit">
+        <button type="submit">Ende setzen</button>
+      </form>
+
+      <div class="manageRow">
+        <button id="resetBtn" type="button" class="secondary">↺ Zurücksetzen</button>
+        <button id="soundBtn" type="button" class="secondary">Ton: an</button>
+      </div>
+    </section>
+
+    <p id="runNote" class="note" hidden>
+      Stundenende, Zurücksetzen und Ton lassen sich nur einstellen, wenn der Timer pausiert ist.
+    </p>
+
     <p class="note">
-      Das Ende der Stunde lässt sich nur am Schüler-iPad einstellen, wenn der Timer pausiert ist.
-      Plus und Minus verschieben nur das Verhältnis von Arbeitszeit zu Auszeit.
+      Plus und Minus bei der Auszeit verschieben nur das Verhältnis von Arbeitszeit zu Auszeit – das Ende bleibt gleich.
     </p>
   </main>
 
@@ -303,6 +370,15 @@
     const plusBtn = document.getElementById('plus');
     const toggleBtn = document.getElementById('toggle');
     const feedbackEl = document.getElementById('feedback');
+
+    const manageCard = document.getElementById('manageCard');
+    const runNote = document.getElementById('runNote');
+    const endBigEl = document.getElementById('endBig');
+    const remTotalEl = document.getElementById('remTotal');
+    const endForm = document.getElementById('endForm');
+    const endInput = document.getElementById('endInput');
+    const resetBtn = document.getElementById('resetBtn');
+    const soundBtn = document.getElementById('soundBtn');
 
     // Letzter Stand vom Schüler-iPad und wann er ankam (Zeit läuft lokal weiter)
     let snap = null;
@@ -375,6 +451,50 @@
       ringEl.style.background = `conic-gradient(var(--green) 0deg ${g}deg, var(--red) ${g}deg ${g + r}deg, var(--track) ${g + r}deg 360deg)`;
 
       toggleBtn.textContent = snap.running ? 'Pause' : (done ? 'Neu starten' : 'Start');
+
+      // Stundenende & Co. nur bei stehendem Timer (Grundregel)
+      const canManage = connected && !snap.running;
+
+      manageCard.hidden = !canManage;
+      runNote.hidden = !(connected && snap.running);
+
+      if(canManage){
+        const remTotalSec = done ? snap.totalSec : snap.totalSec - el;
+        const end = new Date(Date.now() + remTotalSec * 1000);
+
+        endBigEl.textContent = fmtClock(end);
+        remTotalEl.textContent = Math.round(remTotalSec / 60);
+        soundBtn.textContent = snap.soundOn === false ? 'Ton: aus' : 'Ton: an';
+
+        if(document.activeElement !== endInput){
+          endInput.value = fmtClock(end).slice(0, 5);
+        }
+      }
+    }
+
+    // Verbleibende Minuten ab jetzt bis zum Stundenende (nach Ablauf: die eingestellte Gesamtzeit)
+    function remainingMin(){
+      const live = snap.running ? (Date.now() - snapAt) / 1000 : 0;
+      const el = Math.min(snap.totalSec, snap.elapsed + live);
+      const done = snap.started && el >= snap.totalSec;
+
+      return Math.round((done ? snap.totalSec : snap.totalSec - el) / 60);
+    }
+
+    function sendRemaining(min){
+      if(min < 1){
+        feedback('Mindestens 1 Minute');
+        return;
+      }
+
+      if(min > 119){
+        feedback('Höchstens 119 Minuten');
+        min = 119;
+      }
+
+      if(send({type:'setRemaining', min})){
+        feedback('Stundenende geändert');
+      }
     }
 
     function send(msg){
@@ -411,6 +531,49 @@
 
     toggleBtn.addEventListener('click', () => {
       send({type:'toggle'});
+    });
+
+    document.querySelectorAll('.endSteps button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if(snap && !snap.running){
+          sendRemaining(remainingMin() + Number(btn.dataset.d));
+        }
+      });
+    });
+
+    endForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const m = /^(\d{1,2}):(\d{2})$/.exec(endInput.value);
+
+      if(!m || !snap || snap.running){
+        return;
+      }
+
+      const target = new Date();
+      target.setHours(Number(m[1]), Number(m[2]), 0, 0);
+
+      const min = Math.round((target - Date.now()) / 60000);
+
+      if(min < 1){
+        feedback('Diese Uhrzeit ist schon vorbei');
+        return;
+      }
+
+      endInput.blur();
+      sendRemaining(min);
+    });
+
+    resetBtn.addEventListener('click', () => {
+      if(snap && !snap.running && confirm('Timer auf 45 Minuten mit 10 Minuten Auszeit zurücksetzen?')){
+        send({type:'reset'});
+      }
+    });
+
+    soundBtn.addEventListener('click', () => {
+      if(snap && !snap.running){
+        send({type:'sound', on: snap.soundOn === false});
+      }
     });
 
     function scheduleRetry(){

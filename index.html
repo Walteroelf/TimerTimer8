@@ -1562,41 +1562,44 @@
         state.workSec = state.totalSec - state.breakSec;
 
       }else{
-        const desiredRemainingMin = totalMinFromPointer(info);
-
-        const maxRemainingWholeMin = Math.max(
-          1,
-          Math.floor((MAX_TOTAL_MIN * 60 - elapsed) / 60)
-        );
-
-        const remainingMin = clamp(
-          desiredRemainingMin,
-          1,
-          maxRemainingWholeMin
-        );
-
-        const desiredRemainingSec = remainingMin * 60;
-
-        const keepGreen = state.breakSec;
-
-        state.totalSec = elapsed + desiredRemainingSec;
-
-        state.breakSec = Math.min(
-          keepGreen,
-          desiredRemainingSec,
-          60 * 60
-        );
-
-        state.workSec = state.totalSec - state.breakSec;
-
-        const remWorkSec = Math.max(0, state.workSec - elapsed);
-        const roundedRemWorkSec = Math.round(remWorkSec / 60) * 60;
-
-        state.workSec = elapsed + roundedRemWorkSec;
-        state.totalSec = state.workSec + state.breakSec;
+        setRemainingMin(totalMinFromPointer(info), elapsed);
       }
 
       updateUI();
+    }
+
+    // Stundenende einstellen: noch verbleibende Minuten ab jetzt (nur bei stehendem Timer aufrufen)
+    function setRemainingMin(desiredRemainingMin, elapsed){
+      const maxRemainingWholeMin = Math.max(
+        1,
+        Math.floor((MAX_TOTAL_MIN * 60 - elapsed) / 60)
+      );
+
+      const remainingMin = clamp(
+        desiredRemainingMin,
+        1,
+        maxRemainingWholeMin
+      );
+
+      const desiredRemainingSec = remainingMin * 60;
+
+      const keepGreen = state.breakSec;
+
+      state.totalSec = elapsed + desiredRemainingSec;
+
+      state.breakSec = Math.min(
+        keepGreen,
+        desiredRemainingSec,
+        60 * 60
+      );
+
+      state.workSec = state.totalSec - state.breakSec;
+
+      const remWorkSec = Math.max(0, state.workSec - elapsed);
+      const roundedRemWorkSec = Math.round(remWorkSec / 60) * 60;
+
+      state.workSec = elapsed + roundedRemWorkSec;
+      state.totalSec = state.workSec + state.breakSec;
     }
 
     // Innerhalb dieses Radius (Zeitanzeige in der Mitte) verstellt ein Tipp nichts
@@ -1876,7 +1879,8 @@
         totalSec: state.totalSec,
         workSec: state.workSec,
         breakSec: state.breakSec,
-        elapsed: currentElapsed()
+        elapsed: currentElapsed(),
+        soundOn
       };
     }
 
@@ -1889,7 +1893,7 @@
       }
 
       const snap = remoteSnapshot();
-      const sig = [snap.started, snap.running, snap.totalSec, snap.workSec, snap.breakSec].join('|');
+      const sig = [snap.started, snap.running, snap.totalSec, snap.workSec, snap.breakSec, snap.soundOn].join('|');
       const now = Date.now();
 
       if(!force && sig === lastRemoteSig && now - lastRemoteSent < 1000){
@@ -1915,6 +1919,16 @@
         stepBreak(msg.delta);
       }else if(msg.type === 'toggle'){
         toggleTimer();
+      }else if(msg.type === 'setRemaining' && Number.isFinite(msg.min) && !state.running){
+        // Grundregel: Das Stundenende ändert sich nur, wenn der Timer steht – auch vom Lehrer-iPad aus
+        clearIfDone();
+        setRemainingMin(Math.round(msg.min), currentElapsed());
+        updateUI();
+        save();
+      }else if(msg.type === 'reset' && !state.running){
+        resetTimer();
+      }else if(msg.type === 'sound' && typeof msg.on === 'boolean' && msg.on !== soundOn){
+        toggleSound();
       }
 
       remoteSync(true);

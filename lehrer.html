@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Timer Lehrer</title>
+
+  <link rel="apple-touch-icon" href="timer-icon.png">
+  <link rel="icon" type="image/png" href="timer-icon.png">
+
+  <style>
+    :root{
+      color-scheme: light dark;
+      --bg:#f6f7fb;
+      --fg:#0f172a;
+      --fg-soft:#475569;
+      --card:#fff;
+      --shadow:0 6px 18px rgba(0,0,0,.06);
+      --red:#ef4444;
+      --green:#16a34a;
+      --blue:#2563eb;
+      --track:#e2e8f0;
+    }
+
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg:#0b1221;
+        --fg:#e5e7eb;
+        --fg-soft:#94a3b8;
+        --card:#0f172a;
+        --shadow:none;
+        --track:#1e293b;
+      }
+    }
+
+    *{
+      box-sizing:border-box;
+    }
+
+    body{
+      margin:0;
+      min-height:100dvh;
+      padding:
+        max(16px, env(safe-area-inset-top))
+        max(16px, env(safe-area-inset-right))
+        max(16px, env(safe-area-inset-bottom))
+        max(16px, env(safe-area-inset-left));
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:var(--bg);
+      color:var(--fg);
+      display:flex;
+      justify-content:center;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    main{
+      width:100%;
+      max-width:560px;
+      display:grid;
+      gap:14px;
+      align-content:start;
+    }
+
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+
+    h1{
+      margin:0;
+      font-size:1.25rem;
+    }
+
+    .pill{
+      font-size:.85rem;
+      font-weight:700;
+      padding:6px 10px;
+      border-radius:999px;
+      background:var(--track);
+      color:var(--fg-soft);
+      white-space:nowrap;
+    }
+
+    .pill.ok{
+      background:rgba(22,163,74,.15);
+      color:var(--green);
+    }
+
+    .pill.err{
+      background:rgba(239,68,68,.15);
+      color:var(--red);
+    }
+
+    .card{
+      background:var(--card);
+      border-radius:16px;
+      padding:18px;
+      box-shadow:var(--shadow);
+    }
+
+    .status{
+      display:grid;
+      grid-template-columns:auto 1fr;
+      gap:18px;
+      align-items:center;
+    }
+
+    .ring{
+      width:132px;
+      aspect-ratio:1 / 1;
+      border-radius:50%;
+      background:var(--track);
+      position:relative;
+    }
+
+    .ring::after{
+      content:"";
+      position:absolute;
+      inset:22%;
+      border-radius:50%;
+      background:var(--card);
+    }
+
+    .phase{
+      font-weight:800;
+      letter-spacing:.06em;
+      font-size:1rem;
+      color:var(--fg-soft);
+    }
+
+    .phase.work{ color:var(--red); }
+    .phase.break{ color:var(--green); }
+
+    .time{
+      font:800 3.2rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      margin:4px 0 8px;
+    }
+
+    .meta{
+      color:var(--fg-soft);
+      font-weight:600;
+      line-height:1.5;
+    }
+
+    .controls{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+
+    button{
+      font:inherit;
+      border:none;
+      border-radius:16px;
+      cursor:pointer;
+      touch-action:manipulation;
+      user-select:none;
+    }
+
+    button:disabled{
+      opacity:.4;
+      cursor:not-allowed;
+    }
+
+    .step{
+      height:110px;
+      font-size:3rem;
+      font-weight:900;
+      color:#fff;
+    }
+
+    .step.minus{ background:var(--red); }
+    .step.plus{ background:var(--green); }
+
+    .step small{
+      display:block;
+      font-size:.95rem;
+      font-weight:700;
+      opacity:.9;
+    }
+
+    .toggle{
+      grid-column:1 / -1;
+      height:64px;
+      font-size:1.2rem;
+      font-weight:800;
+      background:var(--blue);
+      color:#fff;
+    }
+
+    .feedback{
+      min-height:1.4em;
+      text-align:center;
+      font-weight:700;
+      color:var(--fg-soft);
+    }
+
+    .note{
+      font-size:.9rem;
+      color:var(--fg-soft);
+      line-height:1.45;
+    }
+
+    .codeForm{
+      display:flex;
+      gap:8px;
+    }
+
+    .codeForm input{
+      flex:1;
+      min-width:0;
+      font:600 1.1rem ui-monospace, SFMono-Regular, Menlo, monospace;
+      padding:12px;
+      border-radius:12px;
+      border:2px solid var(--track);
+      background:var(--card);
+      color:var(--fg);
+    }
+
+    .codeForm button{
+      padding:0 18px;
+      background:var(--blue);
+      color:#fff;
+      font-weight:800;
+    }
+
+    @media (max-width: 420px){
+      .status{
+        grid-template-columns:1fr;
+        justify-items:center;
+        text-align:center;
+      }
+
+      .time{
+        font-size:2.8rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <header>
+      <h1>Timer – Lehrer-Steuerung</h1>
+      <span id="conn" class="pill" role="status">Verbinde …</span>
+    </header>
+
+    <section id="codeCard" class="card" hidden>
+      <p class="note">Scanne den QR-Code auf dem Schüler-iPad oder gib den Code ein, der darunter steht.</p>
+      <form id="codeForm" class="codeForm">
+        <input id="codeInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Code" aria-label="Code vom Schüler-iPad">
+        <button type="submit">Verbinden</button>
+      </form>
+    </section>
+
+    <section id="timerCard" class="card">
+      <div class="status">
+        <div id="ring" class="ring" aria-hidden="true"></div>
+        <div>
+          <div id="phase" class="phase">–</div>
+          <div id="time" class="time">--:--</div>
+          <div class="meta">
+            Auszeit: <span id="breakMin">–</span> min<br>
+            Ende: <span id="endTime">–</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <button id="minus" class="step minus" disabled aria-label="Auszeit minus 1 Minute">−<small>Auszeit</small></button>
+      <button id="plus" class="step plus" disabled aria-label="Auszeit plus 1 Minute">+<small>Auszeit</small></button>
+      <button id="toggle" class="toggle" disabled>Start</button>
+    </section>
+
+    <div id="feedback" class="feedback" aria-live="polite"></div>
+
+    <p class="note">
+      Das Ende der Stunde lässt sich nur am Schüler-iPad einstellen, wenn der Timer pausiert ist.
+      Plus und Minus verschieben nur das Verhältnis von Arbeitszeit zu Auszeit.
+    </p>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"
+          integrity="sha384-nlUQ8ZqCbvStErob+biJNzSgltf6urV3VGqhfIfzhmg9RXmpeRm76ELw0pYnKlTR"
+          crossorigin="anonymous"></script>
+
+  <script>
+    const connEl = document.getElementById('conn');
+    const codeCard = document.getElementById('codeCard');
+    const codeForm = document.getElementById('codeForm');
+    const codeInput = document.getElementById('codeInput');
+
+    const ringEl = document.getElementById('ring');
+    const phaseEl = document.getElementById('phase');
+    const timeEl = document.getElementById('time');
+    const breakMinEl = document.getElementById('breakMin');
+    const endTimeEl = document.getElementById('endTime');
+
+    const minusBtn = document.getElementById('minus');
+    const plusBtn = document.getElementById('plus');
+    const toggleBtn = document.getElementById('toggle');
+    const feedbackEl = document.getElementById('feedback');
+
+    // Letzter Stand vom Schüler-iPad und wann er ankam (Zeit läuft lokal weiter)
+    let snap = null;
+    let snapAt = 0;
+
+    let peer = null;
+    let conn = null;
+    let targetId = null;
+    let retryTimer = null;
+
+    function setConn(text, kind){
+      connEl.textContent = text;
+      connEl.className = 'pill' + (kind ? ' ' + kind : '');
+    }
+
+    function fmt(sec){
+      sec = Math.max(0, Math.floor(sec));
+      return String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
+    }
+
+    function fmtClock(date){
+      return String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0') + ' Uhr';
+    }
+
+    const STALE_MS = 8000;
+
+    function isConnected(){
+      return !!(conn && conn.open && snap && Date.now() - snapAt < STALE_MS);
+    }
+
+    function render(){
+      const connected = isConnected();
+
+      minusBtn.disabled = !connected;
+      plusBtn.disabled = !connected;
+      toggleBtn.disabled = !connected;
+
+      if(!snap){
+        return;
+      }
+
+      const live = snap.running ? (Date.now() - snapAt) / 1000 : 0;
+      const el = Math.min(snap.totalSec, snap.elapsed + live);
+
+      const remRed = Math.max(0, snap.workSec - el);
+      const remGreen = Math.max(0, snap.totalSec - Math.max(el, snap.workSec));
+      const done = snap.started && el >= snap.totalSec;
+
+      if(done){
+        phaseEl.textContent = 'FERTIG';
+        phaseEl.className = 'phase';
+        timeEl.textContent = '00:00';
+      }else if(remRed > 0){
+        phaseEl.textContent = snap.running ? 'ARBEITSZEIT' : (snap.started ? 'ARBEITSZEIT · PAUSE' : 'ARBEITSZEIT · BEREIT');
+        phaseEl.className = 'phase work';
+        timeEl.textContent = fmt(remRed);
+      }else{
+        phaseEl.textContent = snap.running ? 'AUSZEIT' : 'AUSZEIT · PAUSE';
+        phaseEl.className = 'phase break';
+        timeEl.textContent = fmt(remGreen);
+      }
+
+      breakMinEl.textContent = done ? Math.floor(snap.breakSec / 60) : Math.ceil(Math.min(snap.breakSec, snap.totalSec - el) / 60);
+      endTimeEl.textContent = done ? '–' : fmtClock(new Date(Date.now() + (snap.totalSec - el) * 1000));
+
+      // Ring wie auf der Scheibe: grün = Auszeit, rot = Arbeitszeit (eine Runde = 60 min)
+      const g = Math.min(360, remGreen / 10);
+      const r = Math.min(360 - g, remRed / 10);
+
+      ringEl.style.background = `conic-gradient(var(--green) 0deg ${g}deg, var(--red) ${g}deg ${g + r}deg, var(--track) ${g + r}deg 360deg)`;
+
+      toggleBtn.textContent = snap.running ? 'Pause' : (done ? 'Neu starten' : 'Start');
+    }
+
+    function send(msg){
+      if(conn && conn.open){
+        conn.send(msg);
+        return true;
+      }
+
+      feedback('Nicht verbunden – nicht gesendet');
+      return false;
+    }
+
+    let fbTimer = null;
+
+    function feedback(text){
+      feedbackEl.textContent = text;
+      clearTimeout(fbTimer);
+      fbTimer = setTimeout(() => {
+        feedbackEl.textContent = '';
+      }, 1500);
+    }
+
+    minusBtn.addEventListener('click', () => {
+      if(send({type:'step', delta:-1})){
+        feedback('Auszeit −1 gesendet');
+      }
+    });
+
+    plusBtn.addEventListener('click', () => {
+      if(send({type:'step', delta:1})){
+        feedback('Auszeit +1 gesendet');
+      }
+    });
+
+    toggleBtn.addEventListener('click', () => {
+      send({type:'toggle'});
+    });
+
+    function scheduleRetry(){
+      clearTimeout(retryTimer);
+      retryTimer = setTimeout(connect, 3000);
+    }
+
+    function connect(){
+      clearTimeout(retryTimer);
+
+      if(!peer || peer.destroyed || !peer.open){
+        return;
+      }
+
+      if(conn){
+        try{
+          conn.close();
+        }catch{}
+      }
+
+      setConn('Verbinde …');
+
+      const c = peer.connect(targetId, {reliable:true});
+      conn = c;
+
+      c.on('open', () => {
+        setConn('Verbunden', 'ok');
+        c.send({type:'hello'});
+      });
+
+      c.on('data', (msg) => {
+        if(msg && msg.type === 'state'){
+          snap = msg;
+          snapAt = Date.now();
+          render();
+        }
+      });
+
+      c.on('close', () => {
+        if(conn === c){
+          setConn('Getrennt – verbinde neu …', 'err');
+          scheduleRetry();
+        }
+      });
+
+      c.on('error', () => {
+        if(conn === c){
+          scheduleRetry();
+        }
+      });
+    }
+
+    function startPeer(){
+      if(typeof Peer === 'undefined'){
+        setConn('Keine Internetverbindung', 'err');
+        return;
+      }
+
+      peer = new Peer();
+
+      peer.on('open', connect);
+
+      peer.on('disconnected', () => {
+        setTimeout(() => {
+          if(peer && !peer.destroyed){
+            peer.reconnect();
+          }
+        }, 3000);
+      });
+
+      peer.on('error', (err) => {
+        if(err.type === 'peer-unavailable'){
+          setConn('Schüler-iPad nicht erreichbar', 'err');
+          scheduleRetry();
+        }else if(err.type === 'browser-incompatible'){
+          setConn('Browser nicht unterstützt', 'err');
+        }else{
+          setConn('Verbindungsproblem – versuche erneut …', 'err');
+          scheduleRetry();
+        }
+      });
+    }
+
+    function normalizeCode(text){
+      const code = text.trim().toLowerCase().replace(/^.*#/, '').replace(/^tt8-/, '');
+      return /^[a-z0-9]{6,20}$/.test(code) ? 'tt8-' + code : null;
+    }
+
+    codeForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const id = normalizeCode(codeInput.value);
+
+      if(!id){
+        codeInput.focus();
+        return;
+      }
+
+      location.hash = id;
+      location.reload();
+    });
+
+    targetId = normalizeCode(location.hash.slice(1));
+
+    if(targetId){
+      startPeer();
+    }else{
+      codeCard.hidden = false;
+      setConn('Kein Code');
+    }
+
+    // Anzeige flüssig weiterzählen und Verbindungsabbruch erkennen
+    setInterval(() => {
+      if(snap && conn && conn.open && Date.now() - snapAt > STALE_MS){
+        setConn('Keine Antwort – verbinde neu …', 'err');
+        snapAt = Date.now();
+        connect();
+      }
+
+      render();
+    }, 250);
+  </script>
+</body>
+</html>

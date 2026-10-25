@@ -303,6 +303,123 @@
       background:#b45309;
     }
 
+    .remoteBtn{
+      background:#0f766e;
+    }
+
+    .remoteDot{
+      position:fixed;
+      top:max(10px, env(safe-area-inset-top));
+      left:max(10px, env(safe-area-inset-left));
+      width:12px;
+      height:12px;
+      border-radius:50%;
+      background:var(--green);
+      box-shadow:0 0 0 3px rgba(22,163,74,.25);
+      display:none;
+      z-index:5;
+    }
+
+    .remoteDot.on{
+      display:block;
+    }
+
+    .remoteOverlay{
+      position:fixed;
+      inset:0;
+      z-index:20;
+      background:rgba(15,23,42,.55);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+    }
+
+    .remoteOverlay[hidden]{
+      display:none;
+    }
+
+    .remoteBox{
+      background:var(--card);
+      color:var(--fg);
+      border-radius:18px;
+      padding:20px;
+      width:min(380px, 100%);
+      max-height:100%;
+      overflow:auto;
+      text-align:center;
+      box-shadow:0 20px 50px rgba(0,0,0,.3);
+    }
+
+    .remoteBox h2{
+      margin:0 0 4px;
+      font-size:1.3rem;
+    }
+
+    .remoteHint{
+      margin:0 0 12px;
+      color:var(--fg-soft);
+    }
+
+    .remoteQr{
+      background:#fff;
+      border-radius:12px;
+      padding:10px;
+      width:min(260px, 70vw, 50dvh);
+      aspect-ratio:1 / 1;
+      margin:0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .remoteQr svg{
+      width:100%;
+      height:100%;
+    }
+
+    .remoteCode{
+      margin:8px 0 0;
+      font:600 .85rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+      color:var(--fg-soft);
+    }
+
+    .remoteStatus{
+      margin:10px 0 14px;
+      font-weight:700;
+    }
+
+    .remoteStatus.ok{
+      color:var(--green);
+    }
+
+    .remoteStatus.err{
+      color:var(--red2);
+    }
+
+    .remoteActions{
+      display:flex;
+      gap:8px;
+      justify-content:center;
+      flex-wrap:wrap;
+    }
+
+    .remoteActions button{
+      border:none;
+      border-radius:10px;
+      padding:10px 14px;
+      font-size:1rem;
+      font-weight:700;
+      background:#e2e8f0;
+      color:#0f172a;
+      cursor:pointer;
+    }
+
+    .remoteActions button.primary{
+      background:var(--blue);
+      color:#fff;
+    }
+
     .flyStar{
       position:fixed;
       left:0;
@@ -585,6 +702,11 @@
             <path d="M17 9l5 6M22 9l-5 6"/>
           </svg>
         </button>
+        <button id="remoteBtn" class="resetBtn remoteBtn" aria-label="Lehrer-iPad verbinden (QR-Code)">
+          <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true" fill="#fff">
+            <path d="M3 3h8v8H3zm2 2v4h4V5zM13 3h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zM13 13h3v3h-3zm5 0h3v3h-3zm-5 5h3v3h-3zm5 0h3v3h-3zm-2.5-2.5h2v2h-2z"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -617,6 +739,23 @@
     </div>
   </div>
 
+  <div id="remoteDot" class="remoteDot" title="Lehrer-iPad verbunden" aria-label="Lehrer-iPad verbunden" role="status"></div>
+
+  <div id="remoteOverlay" class="remoteOverlay" role="dialog" aria-modal="true" aria-labelledby="remoteTitle" hidden>
+    <div class="remoteBox">
+      <h2 id="remoteTitle">Lehrer-iPad verbinden</h2>
+      <p class="remoteHint">Mit der Kamera des Lehrer-iPads scannen</p>
+      <div id="remoteQr" class="remoteQr" aria-label="QR-Code"></div>
+      <p id="remoteCode" class="remoteCode"></p>
+      <p id="remoteStatus" class="remoteStatus">Lade …</p>
+      <div class="remoteActions">
+        <button id="remoteNew" type="button">Neuer Code</button>
+        <button id="remoteOff" type="button">Fernsteuerung aus</button>
+        <button id="remoteClose" type="button" class="primary">Fertig</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const dial = document.getElementById('dial');
     const ticksG = document.getElementById('ticks');
@@ -644,6 +783,7 @@
     const mainBtn = document.getElementById('mainBtn');
     const resetBtn = document.getElementById('resetBtn');
     const soundBtn = document.getElementById('soundBtn');
+    const remoteBtn = document.getElementById('remoteBtn');
 
     const breakPlus = document.getElementById('breakPlus');
     const breakMinus = document.getElementById('breakMinus');
@@ -1217,11 +1357,17 @@
         mainBtn.classList.add('pauseState');
         mainBtn.setAttribute('aria-label', 'Timer pausieren');
         resetBtn.style.display = 'none';
+        soundBtn.style.display = 'none';
+        remoteBtn.style.display = 'none';
       }else{
         mainBtn.classList.remove('pauseState');
         mainBtn.setAttribute('aria-label', 'Timer starten');
         resetBtn.style.display = 'flex';
+        soundBtn.style.display = 'flex';
+        remoteBtn.style.display = 'flex';
       }
+
+      remoteSync();
     }
 
     let ticker = null;
@@ -1638,6 +1784,312 @@
 
     addRepeater(breakPlus, () => stepBreak(+1));
     addRepeater(breakMinus, () => stepBreak(-1));
+
+    // ---------------------------------------------------------------
+    // Fernsteuerung: Das Lehrer-iPad scannt einen QR-Code und verbindet
+    // sich direkt (WebRTC über PeerJS). Dieses Gerät bleibt der Timer;
+    // der Lehrer kann nur +/− und Start/Pause auslösen, nie das Ende ändern.
+    // ---------------------------------------------------------------
+    const PEERJS_SRC = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
+    const PEERJS_SRI = 'sha384-nlUQ8ZqCbvStErob+biJNzSgltf6urV3VGqhfIfzhmg9RXmpeRm76ELw0pYnKlTR';
+    const QR_SRC = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';
+    const QR_SRI = 'sha384-8FWZA6BGMXhsfO+BLtrJK0We6gg5o1JyO8xQm6peWDEUs17ACA5ziE/NIAkl9z2k';
+
+    const remoteOverlay = document.getElementById('remoteOverlay');
+    const remoteQr = document.getElementById('remoteQr');
+    const remoteCode = document.getElementById('remoteCode');
+    const remoteStatus = document.getElementById('remoteStatus');
+    const remoteDot = document.getElementById('remoteDot');
+
+    let peer = null;
+    let peerStarting = false;
+    let peerError = '';
+    let peerConns = [];
+    let remoteId = null;
+    let lastRemoteSig = '';
+    let lastRemoteSent = 0;
+
+    try{
+      remoteId = localStorage.getItem('ttRemoteId');
+    }catch{}
+
+    const scriptPromises = {};
+
+    function loadScript(src, integrity){
+      if(!scriptPromises[src]){
+        scriptPromises[src] = new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+
+          s.src = src;
+          s.integrity = integrity;
+          s.crossOrigin = 'anonymous';
+          s.onload = resolve;
+          s.onerror = () => {
+            delete scriptPromises[src];
+            s.remove();
+            reject(new Error('Skript nicht geladen'));
+          };
+
+          document.head.appendChild(s);
+        });
+      }
+
+      return scriptPromises[src];
+    }
+
+    function newRemoteId(){
+      const chars = 'abcdefghijkmnpqrstuvwxyz23456789';
+      const bytes = crypto.getRandomValues(new Uint8Array(10));
+
+      return 'tt8-' + Array.from(bytes, (b) => chars[b % chars.length]).join('');
+    }
+
+    function teacherUrl(){
+      return new URL('lehrer.html', location.href).href + '#' + remoteId;
+    }
+
+    function updateRemoteStatus(){
+      const connected = peerConns.length > 0;
+
+      remoteDot.classList.toggle('on', connected && !state.running);
+
+      remoteStatus.classList.remove('ok', 'err');
+
+      if(connected){
+        remoteStatus.textContent = 'Lehrer-iPad verbunden ✓';
+        remoteStatus.classList.add('ok');
+      }else if(peerError){
+        remoteStatus.textContent = peerError;
+        remoteStatus.classList.add('err');
+      }else if(peer && peer.open){
+        remoteStatus.textContent = 'Warte auf Lehrer-iPad …';
+      }else{
+        remoteStatus.textContent = 'Verbinde …';
+      }
+    }
+
+    function remoteSnapshot(){
+      return {
+        type:'state',
+        started: state.started,
+        running: state.running,
+        totalSec: state.totalSec,
+        workSec: state.workSec,
+        breakSec: state.breakSec,
+        elapsed: currentElapsed()
+      };
+    }
+
+    // Zustand an das Lehrer-iPad schicken: sofort bei Änderungen, sonst einmal pro Sekunde
+    function remoteSync(force = false){
+      remoteDot.classList.toggle('on', peerConns.length > 0 && !state.running);
+
+      if(!peerConns.length){
+        return;
+      }
+
+      const snap = remoteSnapshot();
+      const sig = [snap.started, snap.running, snap.totalSec, snap.workSec, snap.breakSec].join('|');
+      const now = Date.now();
+
+      if(!force && sig === lastRemoteSig && now - lastRemoteSent < 1000){
+        return;
+      }
+
+      lastRemoteSig = sig;
+      lastRemoteSent = now;
+
+      peerConns.forEach((c) => {
+        try{
+          c.send(snap);
+        }catch{}
+      });
+    }
+
+    function handleRemoteMessage(msg){
+      if(!msg || typeof msg !== 'object'){
+        return;
+      }
+
+      if(msg.type === 'step' && (msg.delta === 1 || msg.delta === -1)){
+        stepBreak(msg.delta);
+      }else if(msg.type === 'toggle'){
+        toggleTimer();
+      }
+
+      remoteSync(true);
+    }
+
+    function dropConn(conn){
+      peerConns = peerConns.filter((c) => c !== conn);
+      updateRemoteStatus();
+    }
+
+    async function startPeer(){
+      if(peer || peerStarting || !remoteId){
+        return;
+      }
+
+      peerStarting = true;
+      peerError = '';
+      updateRemoteStatus();
+
+      try{
+        await loadScript(PEERJS_SRC, PEERJS_SRI);
+      }catch{
+        peerStarting = false;
+        peerError = 'Keine Internetverbindung – Fernsteuerung nicht möglich';
+        updateRemoteStatus();
+        return;
+      }
+
+      peerStarting = false;
+
+      const p = new Peer(remoteId);
+      peer = p;
+
+      p.on('open', () => {
+        peerError = '';
+        updateRemoteStatus();
+      });
+
+      p.on('connection', (conn) => {
+        conn.on('open', () => {
+          peerConns.push(conn);
+          updateRemoteStatus();
+          remoteSync(true);
+        });
+
+        conn.on('data', handleRemoteMessage);
+        conn.on('close', () => dropConn(conn));
+        conn.on('error', () => dropConn(conn));
+      });
+
+      p.on('disconnected', () => {
+        setTimeout(() => {
+          if(peer === p && !p.destroyed){
+            p.reconnect();
+          }
+        }, 3000);
+      });
+
+      p.on('error', (err) => {
+        if(peer !== p){
+          return;
+        }
+
+        if(err.type === 'unavailable-id'){
+          // Der alte Code ist beim Vermittlungsdienst noch belegt (z. B. nach Neuladen) – gleich nochmal
+          stopPeer();
+          setTimeout(startPeer, 5000);
+          peerError = 'Code wird neu angemeldet …';
+        }else if(err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error' || err.type === 'socket-closed'){
+          peerError = 'Vermittlungsdienst nicht erreichbar – Internet prüfen';
+        }else if(err.type === 'browser-incompatible'){
+          peerError = 'Dieser Browser unterstützt keine Direktverbindung';
+        }
+
+        updateRemoteStatus();
+      });
+    }
+
+    function stopPeer(){
+      peerConns.forEach((c) => {
+        try{
+          c.close();
+        }catch{}
+      });
+
+      peerConns = [];
+
+      if(peer){
+        const p = peer;
+        peer = null;
+        p.destroy();
+      }
+
+      updateRemoteStatus();
+    }
+
+    async function renderQr(){
+      remoteCode.textContent = 'Code: ' + remoteId.slice(4);
+      remoteQr.textContent = '';
+
+      try{
+        await loadScript(QR_SRC, QR_SRI);
+      }catch{
+        remoteQr.textContent = 'QR-Code braucht Internet';
+        return;
+      }
+
+      const qr = qrcode(0, 'M');
+      qr.addData(teacherUrl());
+      qr.make();
+      remoteQr.innerHTML = qr.createSvgTag({ cellSize:4, margin:2, scalable:true });
+    }
+
+    function openRemote(){
+      if(state.running){
+        return;
+      }
+
+      unlockAudio();
+
+      if(!remoteId){
+        remoteId = newRemoteId();
+      }
+
+      try{
+        localStorage.setItem('ttRemoteId', remoteId);
+        localStorage.setItem('ttRemoteOn', '1');
+      }catch{}
+
+      remoteOverlay.hidden = false;
+      renderQr();
+      startPeer();
+      updateRemoteStatus();
+    }
+
+    function closeRemote(){
+      remoteOverlay.hidden = true;
+    }
+
+    function newRemoteCode(){
+      stopPeer();
+      remoteId = newRemoteId();
+
+      try{
+        localStorage.setItem('ttRemoteId', remoteId);
+      }catch{}
+
+      renderQr();
+      startPeer();
+    }
+
+    function remoteOff(){
+      stopPeer();
+
+      try{
+        localStorage.removeItem('ttRemoteOn');
+      }catch{}
+
+      closeRemote();
+    }
+
+    remoteBtn.addEventListener('click', openRemote);
+    document.getElementById('remoteClose').addEventListener('click', closeRemote);
+    document.getElementById('remoteNew').addEventListener('click', newRemoteCode);
+    document.getElementById('remoteOff').addEventListener('click', remoteOff);
+
+    // Lebenszeichen: auch bei pausiertem Timer jede Sekunde den Stand schicken
+    setInterval(() => remoteSync(), 1000);
+
+    // War die Fernsteuerung schon an, nach dem Neuladen still wieder anmelden
+    try{
+      if(localStorage.getItem('ttRemoteOn') === '1' && remoteId){
+        startPeer();
+      }
+    }catch{}
 
     mainBtn.addEventListener('click', toggleTimer);
     resetBtn.addEventListener('click', resetTimer);

@@ -288,6 +288,14 @@
       <span id="conn" class="pill" role="status">Verbinde …</span>
     </header>
 
+    <section id="rejectCard" class="card" hidden>
+      <p class="note">
+        <b>Dieses Schüler-iPad ist schon mit einem anderen Lehrer-iPad gekoppelt.</b><br>
+        Auf dem anderen Lehrer-iPad „Verbindung aufheben“ tippen – oder am Schüler-iPad über den
+        QR-Knopf „Neuer Code“ wählen und den neuen QR-Code hier scannen.
+      </p>
+    </section>
+
     <section id="codeCard" class="card" hidden>
       <p class="note">Scanne den QR-Code auf dem Schüler-iPad oder gib den Code ein, der darunter steht.</p>
       <form id="codeForm" class="codeForm" style="margin-top:10px">
@@ -436,6 +444,22 @@
     let conn = null;
     let targetId = null;
     let retryTimer = null;
+
+    // Feste Kennung dieses Lehrer-iPads: Das Schüler-iPad lässt nur das zuerst gekoppelte Gerät zu
+    let teacherToken = null;
+
+    try{
+      teacherToken = localStorage.getItem('ttTeacherToken');
+    }catch{}
+
+    if(!/^[a-z0-9]{16,40}$/.test(teacherToken || '')){
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+      teacherToken = Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => chars[b % chars.length]).join('');
+
+      try{
+        localStorage.setItem('ttTeacherToken', teacherToken);
+      }catch{}
+    }
 
     const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
@@ -976,12 +1000,29 @@
       conn = c;
 
       c.on('open', () => {
+        if(ended){
+          c.close();
+          return;
+        }
+
         setConn('Verbunden', 'ok');
-        c.send({type:'hello'});
+        c.send({type:'hello', token: teacherToken});
       });
 
       c.on('data', (msg) => {
         if(ended){
+          return;
+        }
+
+        if(msg && msg.type === 'rejected'){
+          // Ein anderes Lehrer-iPad ist gekoppelt – nicht weiter versuchen
+          ended = true;
+          clearTimeout(retryTimer);
+          setConn('Abgewiesen', 'err');
+          document.getElementById('rejectCard').hidden = false;
+          minusBtn.disabled = true;
+          plusBtn.disabled = true;
+          toggleBtn.disabled = true;
           return;
         }
 

@@ -50,7 +50,7 @@ Solange der Timer läuft, sieht er so schlicht wie möglich aus: nur Scheibe, St
 | 1 Minute vor Ende der Auszeit | sanfter Doppelton, grüner Bogen pulsiert |
 | Ende | dreifacher Gong, große Einblendung **FERTIG!** |
 
-Das Display bleibt an, solange der Timer läuft.
+Das Display bleibt an, solange der Timer läuft, ein Lehrer-iPad verbunden ist oder das Gerät gesperrt ist.
 
 ---
 
@@ -88,6 +88,16 @@ Auf der Lehrer-Seite unter **Schüler-iPad → 🔒 Bedienung sperren**:
 - **🔓 Bedienung entsperren** auf der Lehrer-Seite hebt die Sperre auf.
 - **Notfall**, wenn die Verbindung weg ist: Auf dem Schüler-iPad oben rechts das kleine **Schloss** antippen und den **4-stelligen Notfall-Code** eingeben. Der Code steht nur auf der Lehrer-Seite und ist bei jeder Sperre neu.
 
+### Noch sicherer: „Geführter Zugriff“ von iPadOS
+
+Die Sperre wirkt nur innerhalb des Timers. Damit ein Schüler den Timer auch nicht verlassen oder schließen kann:
+
+1. **Einmal einrichten:** Auf dem Schüler-iPad **Einstellungen → Bedienungshilfen → Geführter Zugriff** einschalten. Unter **„Code-Einstellungen“** einen eigenen Code festlegen.
+2. **Starten:** Den Timer öffnen, die **obere Taste dreimal schnell drücken** (bei iPads mit Home-Taste: die Home-Taste) und oben rechts **„Starten“** tippen.
+3. **Beenden:** Wieder dreimal drücken, Code eingeben, **„Beenden“** tippen.
+
+Die Anleitung steht auch in der App hinter dem **i**-Knopf.
+
 ### Verbindung aufheben
 
 Auf der Lehrer-Seite unter **Schüler-iPad → Verbindung aufheben** (mit Rückfrage):
@@ -98,6 +108,8 @@ Auf der Lehrer-Seite unter **Schüler-iPad → Verbindung aufheben** (mit Rückf
 **Gut zu wissen:**
 - **Das Schüler-iPad bleibt der eigentliche Timer.** Bricht die Verbindung ab, läuft es normal weiter. Die Lehrer-Seite verbindet sich automatisch neu.
 - **Der Code bleibt gleich**, auch wenn das Schüler-iPad neu geladen wird. Die Lehrer-Seite kann also offen bleiben.
+- **Nur ein Lehrer-iPad darf steuern.** Das erste Lehrer-iPad, das sich verbindet, ist fest gekoppelt. Andere Geräte werden abgewiesen, auch wenn jemand den QR-Code abfotografiert hat. Die Kopplung löst „Verbindung aufheben“ auf dem Lehrer-iPad oder „Neuer Code“ am Schüler-iPad.
+- **Der Bildschirm des Schüler-iPads bleibt an**, solange ein Lehrer-iPad verbunden oder das Gerät gesperrt ist, auch bei pausiertem Timer. Sonst würde das iPad einschlafen und die Verbindung abreißen.
 - **Neuer Code** erzeugt einen frischen QR-Code, damit ist der alte ungültig. **Fernsteuerung aus** beendet die Verbindung ganz.
 - **Ohne QR-Code verbinden:** Öffne https://walteroelf.github.io/TimerTimer8/lehrer.html und gib den Code ein, der unter dem QR-Code steht.
 - **Ton nach Neuladen:** Wurde das Schüler-iPad neu geladen, kommt der Ton erst wieder, wenn einmal jemand auf das Schüler-iPad getippt hat. Das verlangt iOS.

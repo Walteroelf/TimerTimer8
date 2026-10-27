@@ -914,6 +914,11 @@
         Beide iPads brauchen dafür Internet. Bricht die Verbindung ab, läuft der Timer hier normal weiter,
         und Ihr iPad verbindet sich von selbst wieder.
       </p>
+      <p>
+        <b>Nur Ihr iPad darf steuern:</b> Das erste Lehrer-iPad, das sich verbindet, ist fest gekoppelt.
+        Andere Geräte werden abgewiesen, auch wenn jemand den QR-Code abfotografiert hat. Die Kopplung lösen Sie
+        auf Ihrem iPad mit „Verbindung aufheben“ oder hier im QR-Fenster mit „Neuer Code“.
+      </p>
 
       <h3>7. Schüler-iPad sperren</h3>
       <p>
@@ -926,6 +931,20 @@
         4-stelligen <b>Notfall-Code</b> eingeben. Den Code sehen nur Sie auf Ihrem iPad.
       </p>
 
+      <div class="helpRule">
+        <p><b>Noch sicherer: „Geführter Zugriff“ von iPadOS</b></p>
+        <p>
+          Die Sperre wirkt nur innerhalb des Timers. Damit ein Schüler den Timer auch nicht verlassen oder schließen kann,
+          gibt es auf dem iPad den „Geführten Zugriff“:
+        </p>
+        <ol>
+          <li><b>Einmal einrichten:</b> Auf dem Schüler-iPad <b>Einstellungen → Bedienungshilfen → Geführter Zugriff</b> einschalten. Unter <b>„Code-Einstellungen“</b> einen Code festlegen, den nur Sie kennen.</li>
+          <li><b>Starten:</b> Den Timer öffnen und die <b>obere Taste dreimal schnell drücken</b> (bei iPads mit Home-Taste: die Home-Taste). Oben rechts auf <b>„Starten“</b> tippen.</li>
+          <li><b>Beenden:</b> Wieder dreimal schnell drücken, Ihren Code eingeben und <b>„Beenden“</b> tippen.</li>
+        </ol>
+        <p style="margin-bottom:0">Zusammen mit der Sperre kann der Schüler dann weder den Timer verstellen noch die App verlassen.</p>
+      </div>
+
       <h3>8. Verbindung aufheben</h3>
       <p>
         Auf Ihrem iPad <b>„Verbindung aufheben“</b> tippen. Dieses iPad wird dabei automatisch entsperrt,
@@ -936,7 +955,7 @@
       <ul>
         <li><b>Als App speichern:</b> In Safari <b>Teilen → „Zum Home-Bildschirm“</b>. Danach startet der Timer auch ohne Internet.</li>
         <li><b>Kein Ton?</b> Den Stummschalter bzw. „Stumm“ im Kontrollzentrum ausschalten und einmal auf den Bildschirm tippen.</li>
-        <li>Solange der Timer läuft, bleibt der Bildschirm an.</li>
+        <li>Der Bildschirm bleibt an, solange der Timer läuft, Ihr iPad verbunden ist oder dieses iPad gesperrt ist.</li>
       </ul>
 
       <div class="remoteActions">
@@ -1211,19 +1230,34 @@
     }
 
     let wakeLock = null;
+    let wakeLockPending = false;
 
     async function requestWakeLock(){
-      if(!('wakeLock' in navigator) || wakeLock){
+      if(!('wakeLock' in navigator) || wakeLock || wakeLockPending || document.visibilityState !== 'visible'){
         return;
       }
 
+      wakeLockPending = true;
+
       try{
-        wakeLock = await navigator.wakeLock.request('screen');
-        wakeLock.addEventListener('release', () => {
-          wakeLock = null;
+        const lock = await navigator.wakeLock.request('screen');
+
+        lock.addEventListener('release', () => {
+          if(wakeLock === lock){
+            wakeLock = null;
+          }
         });
+
+        wakeLock = lock;
+
+        // Inzwischen nicht mehr gebraucht? Gleich wieder freigeben
+        if(!wantWakeLock()){
+          releaseWakeLock();
+        }
       }catch{
         wakeLock = null;
+      }finally{
+        wakeLockPending = false;
       }
     }
 
@@ -1234,9 +1268,23 @@
       }
     }
 
-    document.addEventListener('visibilitychange', () => {
-      if(document.visibilityState === 'visible' && state.running){
+    // Bildschirm bleibt an, solange der Timer läuft, ein Lehrer-iPad verbunden ist
+    // oder das Gerät gesperrt ist – sonst schläft das iPad ein und die Verbindung reißt ab
+    function wantWakeLock(){
+      return state.running || peerConns.length > 0 || !!lockCode;
+    }
+
+    function updateWakeLock(){
+      if(wantWakeLock()){
         requestWakeLock();
+      }else{
+        releaseWakeLock();
+      }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if(document.visibilityState === 'visible'){
+        updateWakeLock();
       }
     });
 
@@ -1638,7 +1686,7 @@
         ticker = null;
       }
 
-      releaseWakeLock();
+      updateWakeLock();
 
       updateUI();
     }
@@ -1649,7 +1697,7 @@
         ticker = null;
       }
 
-      releaseWakeLock();
+      updateWakeLock();
 
       state.totalSec = DEFAULT_TOTAL_MIN * 60;
       state.breakSec = DEFAULT_BREAK_MIN * 60;
@@ -1699,7 +1747,7 @@
         state.running = false;
         state.pauseStart = Date.now();
 
-        releaseWakeLock();
+        updateWakeLock();
 
         updateUI();
 
@@ -2028,9 +2076,25 @@
     let lastRemoteSig = '';
     let lastRemoteSent = 0;
 
+    // Kennung des gekoppelten Lehrer-iPads (bleibt nach Neuladen erhalten)
+    let pairedToken = null;
+
     try{
       remoteId = localStorage.getItem('ttRemoteId');
+      pairedToken = localStorage.getItem('ttTeacher');
     }catch{}
+
+    function setPairedToken(token){
+      pairedToken = token;
+
+      try{
+        if(token){
+          localStorage.setItem('ttTeacher', token);
+        }else{
+          localStorage.removeItem('ttTeacher');
+        }
+      }catch{}
+    }
 
     const scriptPromises = {};
 
@@ -2071,6 +2135,7 @@
       const connected = peerConns.length > 0;
 
       remoteDot.classList.toggle('on', connected && !state.running);
+      updateWakeLock();
 
       remoteStatus.classList.remove('ok', 'err');
 
@@ -2080,6 +2145,8 @@
       }else if(peerError){
         remoteStatus.textContent = peerError;
         remoteStatus.classList.add('err');
+      }else if(peer && peer.open && pairedToken){
+        remoteStatus.textContent = 'Gekoppelt – warte auf das Lehrer-iPad … („Neuer Code“ löst die Kopplung)';
       }else if(peer && peer.open){
         remoteStatus.textContent = 'Warte auf Lehrer-iPad …';
       }else{
@@ -2197,13 +2264,47 @@
       });
 
       p.on('connection', (conn) => {
-        conn.on('open', () => {
+        let accepted = false;
+
+        // Wer sich nicht innerhalb von 5 s richtig anmeldet, wird getrennt
+        const helloTimer = setTimeout(() => {
+          if(!accepted){
+            conn.close();
+          }
+        }, 5000);
+
+        conn.on('data', (msg) => {
+          if(accepted){
+            handleRemoteMessage(msg);
+            return;
+          }
+
+          if(!msg || msg.type !== 'hello' || typeof msg.token !== 'string' || !/^[a-z0-9]{16,40}$/.test(msg.token)){
+            return;
+          }
+
+          // Kopplung: Nur das Lehrer-iPad, das sich zuerst verbunden hat, darf steuern
+          if(pairedToken && msg.token !== pairedToken){
+            try{
+              conn.send({type:'rejected'});
+            }catch{}
+
+            setTimeout(() => conn.close(), 500);
+            return;
+          }
+
+          if(!pairedToken){
+            setPairedToken(msg.token);
+          }
+
+          accepted = true;
+          clearTimeout(helloTimer);
+
           peerConns.push(conn);
           updateRemoteStatus();
           remoteSync(true);
         });
 
-        conn.on('data', handleRemoteMessage);
         conn.on('close', () => dropConn(conn));
         conn.on('error', () => dropConn(conn));
       });
@@ -2299,6 +2400,7 @@
 
     function newRemoteCode(){
       stopPeer();
+      setPairedToken(null);
       remoteId = newRemoteId();
 
       try{
@@ -2311,6 +2413,7 @@
 
     function remoteOff(){
       stopPeer();
+      setPairedToken(null);
 
       try{
         localStorage.removeItem('ttRemoteOn');
@@ -2341,6 +2444,7 @@
       }
 
       updateUI();
+      updateWakeLock();
     }
 
     function setLock(code){

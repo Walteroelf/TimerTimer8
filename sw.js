@@ -1,6 +1,6 @@
 // Offline-Unterstützung: Dateien werden zwischengespeichert.
 // Mit Netz wird immer die neueste Version geladen, ohne Netz die gespeicherte.
-const CACHE = 'timertimer8-v2';
+const CACHE = 'timertimer8-v3';
 
 const FILES = [
   './',

@@ -18,4 +18,4 @@ Dieses Werk steht unter der Lizenz **Creative Commons Namensnennung – Nicht ko
 
 Diese Bestandteile stammen nicht von Walteroelf und behalten ihre eigene Lizenz:
 
-- **Bibliotheken** (per CDN geladen): PeerJS 1.5.4 (MIT) und qrcode-generator 1.4.4 (MIT)
+- **Bibliotheken** (`lib/`): PeerJS 1.5.4 (MIT) und qrcode-generator 1.4.4 (MIT)

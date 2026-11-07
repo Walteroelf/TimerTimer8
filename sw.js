@@ -1,13 +1,15 @@
 // Offline-Unterstützung: Dateien werden zwischengespeichert.
 // Mit Netz wird immer die neueste Version geladen, ohne Netz die gespeicherte.
-const CACHE = 'timertimer8-v3';
+const CACHE = 'timertimer8-v4';
 
 const FILES = [
   './',
   './index.html',
   './timer-icon.png',
   './manifest.json',
-  './lehrer.html'
+  './lehrer.html',
+  './lib/peerjs.min.js',
+  './lib/qrcode.js'
 ];
 
 self.addEventListener('install', (event) => {

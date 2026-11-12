@@ -890,6 +890,7 @@
       <div class="helpRule">
         <b>Wichtig:</b> Das <b>Ende der Stunde</b> bleibt fest. Plus und Minus verschieben nur, wie viel davon
         Arbeitszeit und wie viel Auszeit ist. Das Ende lässt sich nur ändern, wenn der Timer pausiert ist.
+        Mit dem Start steht das Ende als <b>feste Uhrzeit</b> fest (z. B. 12:00).
       </div>
 
       <h3>1. Einstellen</h3>
@@ -904,6 +905,11 @@
       <p>
         <b>▶</b> startet, <b>❚❚</b> pausiert. Während der Timer läuft, sieht er bewusst schlicht aus:
         nur die Scheibe, Pause und die Auszeit-Tasten.
+      </p>
+      <p>
+        <b>Eine Pause verschiebt das Ende nicht.</b> Die Uhr läuft im Hintergrund weiter, die Anzeige zählt auch in der
+        Pause herunter. Nach dem Fortsetzen ist entsprechend weniger Arbeitszeit übrig. Die Auszeit bleibt, wie sie ist.
+        So bringt Pausieren keinen Vorteil. Auf Ihrem Lehrer-iPad sehen Sie, wie oft und wie lange pausiert wurde.
       </p>
 
       <h3>3. Auszeit spontan ändern</h3>
@@ -1079,8 +1085,9 @@
       started:false,
       running:false,
       t0:0,
-      pausedAcc:0,
       pauseStart:0,
+      pauseCount:0,
+      pauseMs:0,
       lastPhase:'work',
       lastWarn:null
     };
@@ -1176,22 +1183,41 @@
       };
     }
 
+    // Das Stundenende ist eine feste Uhrzeit (t0 + totalSec): Die Uhr läuft ab dem Start durch,
+    // eine Pause verschiebt das Ende nicht – die Pausenzeit geht von der Arbeitszeit ab.
     function currentElapsed(){
       if(!state.started){
         return 0;
       }
 
-      const now = Date.now();
-
-      const paused = state.running
-        ? state.pausedAcc
-        : state.pausedAcc + (state.pauseStart ? (now - state.pauseStart) : 0);
-
       return clamp(
-        Math.floor((now - state.t0 - paused) / 1000),
+        Math.floor((Date.now() - state.t0) / 1000),
         0,
         state.totalSec
       );
+    }
+
+    function endAtMs(){
+      return state.started ? state.t0 + state.totalSec * 1000 : null;
+    }
+
+    function resetPauseStats(){
+      state.pauseStart = 0;
+      state.pauseCount = 0;
+      state.pauseMs = 0;
+    }
+
+    // Gesamte Pausenzeit dieser Runde (eine laufende Pause zählt bis jetzt, höchstens bis zum Ende)
+    function pausedMsNow(){
+      let ms = state.pauseMs;
+
+      if(state.pauseStart){
+        const until = state.started ? Math.min(Date.now(), endAtMs()) : Date.now();
+
+        ms += Math.max(0, until - state.pauseStart);
+      }
+
+      return ms;
     }
 
     function fmtMMSS(s){
@@ -1545,7 +1571,11 @@
 
       centerTotalTime.textContent = `${mm}:${ss}`;
 
-      const targetDate = new Date(Date.now() + remainingTotalSec * 1000);
+      // Nach dem Start steht das Ende fest; davor gilt „wenn jetzt gestartet“
+      const targetDate = state.started
+        ? new Date(endAtMs())
+        : new Date(Date.now() + remainingTotalSec * 1000);
+
       centerTargetTime.textContent = fmtClockTime(targetDate);
 
       centerTotalLabel.setAttribute('fill', '#000');
@@ -1668,25 +1698,22 @@
       if(state.started && currentElapsed() >= state.totalSec){
         state.started = false;
         state.t0 = 0;
-        state.pausedAcc = 0;
-        state.pauseStart = 0;
+        resetPauseStats();
       }
 
       if(!state.started){
         state.started = true;
         state.t0 = Date.now();
-        state.pausedAcc = 0;
-        state.pauseStart = 0;
+        resetPauseStats();
 
         state.lastPhase = state.workSec > 0
           ? 'work'
           : (state.totalSec > 0 ? 'break' : 'done');
 
-      }else{
-        if(state.pauseStart){
-          state.pausedAcc += Date.now() - state.pauseStart;
-          state.pauseStart = 0;
-        }
+      }else if(state.pauseStart){
+        // Pause beendet: Dauer verbuchen. Die Uhr lief weiter, die Zeit ist verloren.
+        state.pauseMs = pausedMsNow();
+        state.pauseStart = 0;
       }
 
       state.running = true;
@@ -1711,13 +1738,10 @@
         return;
       }
 
+      // Die Uhr läuft im Hintergrund weiter (Ticker bleibt an) – nur Töne und Signale pausieren
       state.running = false;
       state.pauseStart = Date.now();
-
-      if(ticker){
-        clearInterval(ticker);
-        ticker = null;
-      }
+      state.pauseCount += 1;
 
       updateWakeLock();
 
@@ -1739,8 +1763,7 @@
       state.started = false;
       state.running = false;
       state.t0 = 0;
-      state.pausedAcc = 0;
-      state.pauseStart = 0;
+      resetPauseStats();
       state.lastPhase = 'work';
 
       save();
@@ -1757,28 +1780,33 @@
 
     function tick(){
       const elapsed = currentElapsed();
-      const phase = getPhase(elapsed);
 
-      if(phase !== state.lastPhase){
-        state.lastPhase = phase;
-        onPhaseChange(phase);
+      // Signale nur bei laufendem Timer; nach einer Pause kommt beim Fortsetzen der Gong der aktuellen Phase
+      if(state.running){
+        const phase = getPhase(elapsed);
+
+        if(phase !== state.lastPhase){
+          state.lastPhase = phase;
+          onPhaseChange(phase);
+        }
+
+        const warn = getWarnZone(elapsed);
+
+        if(warn && warn !== state.lastWarn){
+          playWarnSound();
+        }
+
+        state.lastWarn = warn;
       }
-
-      const warn = getWarnZone(elapsed);
-
-      if(warn && warn !== state.lastWarn){
-        playWarnSound();
-      }
-
-      state.lastWarn = warn;
 
       if(elapsed >= state.totalSec){
         clearInterval(ticker);
         ticker = null;
 
-        // Uhr anhalten, damit die Zeit nach Ablauf nicht weiterläuft
+        // Ende erreicht (auch während einer Pause): Pausenzeit abschließen, Uhr anhalten
+        state.pauseMs = pausedMsNow();
+        state.pauseStart = 0;
         state.running = false;
-        state.pauseStart = Date.now();
 
         updateWakeLock();
 
@@ -1828,8 +1856,7 @@
       if(state.started && currentElapsed() >= state.totalSec){
         state.started = false;
         state.t0 = 0;
-        state.pausedAcc = 0;
-        state.pauseStart = 0;
+        resetPauseStats();
         state.lastPhase = 'work';
       }
     }
@@ -2196,6 +2223,10 @@
         workSec: state.workSec,
         breakSec: state.breakSec,
         elapsed: currentElapsed(),
+        endAt: endAtMs(),
+        sentAt: Date.now(),
+        pauseCount: state.pauseCount,
+        pauseMs: pausedMsNow(),
         soundOn,
         lockCode
       };
@@ -2210,7 +2241,7 @@
       }
 
       const snap = remoteSnapshot();
-      const sig = [snap.started, snap.running, snap.totalSec, snap.workSec, snap.breakSec, snap.soundOn, snap.lockCode].join('|');
+      const sig = [snap.started, snap.running, snap.totalSec, snap.workSec, snap.breakSec, snap.soundOn, snap.lockCode, snap.pauseCount].join('|');
       const now = Date.now();
 
       if(!force && sig === lastRemoteSig && now - lastRemoteSent < 1000){

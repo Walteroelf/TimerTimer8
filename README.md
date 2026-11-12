@@ -9,10 +9,11 @@ Weiterentwicklung von [TimerTimer7](https://github.com/Walteroelf/TimerTimer7). 
 
 ---
 
-## Die zwei Grundregeln
+## Die drei Grundregeln
 
 1. **Die Auszeit lässt sich immer verstellen, auch während der Timer läuft.** Das ist das Kernstück des Timers.
 2. **Das Ende der Stunde ist fest.** Es lässt sich nur einstellen, solange der Timer pausiert ist. Plus und Minus verschieben nur das Verhältnis von Arbeitszeit zu Auszeit, das Ende bleibt immer gleich.
+3. **Das Ende ist nach dem Start eine feste Uhrzeit** (wie die Pausenglocke), siehe „Pause“ unten.
 
 ---
 
@@ -42,6 +43,17 @@ Solange der Timer läuft, sieht er so schlicht wie möglich aus: nur Scheibe, St
 - **Grünes Feld:** Es zeigt die Auszeit-Minuten, die noch kommen.
 - **Rückmeldung für den Schüler:** Groß erscheint „+1“ oder „−1“ auf der Scheibe, schnelle Folgedrücke werden zusammengezählt (z. B. „−3“). Dazu gibt es einen eigenen kurzen Ton. Bei + fliegt außerdem ein Stern ins grüne Feld.
 
+### Pause: das Ende verschiebt sich nicht
+
+Mit dem Start steht das Ende als **feste Uhrzeit** fest (z. B. 12:00). Eine Pause verschiebt es nicht:
+- **Die Uhr läuft im Hintergrund weiter.** Die Anzeige zählt auch in der Pause herunter.
+- **Nach dem Fortsetzen ist weniger Zeit übrig.** Die Pausenzeit geht von der **Arbeitszeit** ab, die **Auszeit bleibt unverändert**. Pausieren bringt dem Schüler also keinen Vorteil.
+- **Signale:** In der Pause gibt es keine Töne. Hat sich die Phase in der Pause geändert, kommt beim Fortsetzen der Gong der aktuellen Phase.
+- **Ende der Stunde in der Pause:** Zeigt die Uhr „FERTIG“.
+- **Ende ändern:** Bei pausiertem Timer lässt sich das Ende mit dem blauen Punkt wie bisher neu setzen („Minuten ab jetzt“). Das ist dann die neue feste Uhrzeit.
+- **Auf dem Lehrer-iPad** steht, wie oft und wie lange pausiert wurde („Pausiert: 2×, zusammen 3:20 min“). Pausiert jemand am Schüler-iPad, erscheint dort ein Hinweis mit Ton und Vibration. Pausierst du selbst vom Lehrer-iPad aus, bleibt der Hinweis aus.
+- Vor dem ersten Start zeigt der Timer die Zielzeit „wenn jetzt gestartet“.
+
 ### Signale während des Laufs
 | Zeitpunkt | Signal |
 |---|---|
@@ -66,7 +78,7 @@ So verstellst du die Auszeit vom eigenen iPad aus, ohne zum Schüler-iPad zu geh
 **Was die Lehrer-Steuerung kann:**
 
 *Immer:*
-- den Timer des Schülers live sehen, auf **derselben Scheibe** wie am Schüler-iPad, dazu Auszeit-Minuten und Ende
+- den Timer des Schülers live sehen, auf **derselben Scheibe** wie am Schüler-iPad, dazu Auszeit-Minuten, Ende und die **Pausen** der Runde
 - **− Auszeit / + Auszeit** auslösen; auf dem Schüler-iPad erscheinen dann „±1“, Ton und Stern
 - **Start / Pause** auslösen
 - **Ton** am Schüler-iPad an- oder ausschalten

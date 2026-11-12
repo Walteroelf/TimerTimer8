@@ -122,6 +122,36 @@
       color:var(--fg);
     }
 
+    .pauseAlert{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      background:#b45309;
+      color:#fff;
+      border-radius:16px;
+      padding:14px 16px;
+      line-height:1.4;
+      position:sticky;
+      top:8px;
+      z-index:5;
+      box-shadow:0 6px 18px rgba(0,0,0,.25);
+    }
+
+    .pauseAlert button{
+      flex:0 0 auto;
+      background:#fff;
+      color:#7c2d12;
+      font-weight:800;
+      padding:10px 14px;
+    }
+
+    .pauseInfo{
+      margin-top:4px;
+      font-size:.9rem;
+      color:#b45309;
+    }
+
     .controls{
       display:grid;
       grid-template-columns:1fr 1fr;
@@ -295,6 +325,11 @@
       <span id="conn" class="pill" role="status">Verbinde …</span>
     </header>
 
+    <section id="pauseAlert" class="pauseAlert" role="alert" hidden>
+      <span><b>⚠ Der Timer wurde am Schüler-iPad pausiert.</b><br>Die Uhr läuft weiter – die Pausenzeit geht von der Arbeitszeit ab.</span>
+      <button id="pauseAlertOk" type="button">Verstanden</button>
+    </section>
+
     <section id="rejectCard" class="card" hidden>
       <p class="note">
         <b>Dieses Schüler-iPad ist schon mit einem anderen Lehrer-iPad gekoppelt.</b><br>
@@ -355,6 +390,7 @@
       </svg>
 
       <p class="meta">Auszeit: <b id="breakMin">–</b> min · Ende: <b id="endTime">–</b></p>
+      <p id="pauseInfo" class="meta pauseInfo" hidden></p>
     </section>
 
     <section class="controls">
@@ -395,6 +431,7 @@
 
     <p class="note">
       Plus und Minus bei der Auszeit verschieben nur das Verhältnis von Arbeitszeit zu Auszeit – das Ende bleibt gleich.
+      Das Ende ist nach dem Start eine feste Uhrzeit: Eine Pause stoppt die Uhr nicht, die Pausenzeit geht von der Arbeitszeit ab.
     </p>
   </main>
 
@@ -425,6 +462,8 @@
     const handleTotal = document.getElementById('handleTotal');
 
     const breakMinEl = document.getElementById('breakMin');
+    const pauseInfo = document.getElementById('pauseInfo');
+    const pauseAlert = document.getElementById('pauseAlert');
     const endTimeEl = document.getElementById('endTime');
 
     const minusBtn = document.getElementById('minus');
@@ -551,9 +590,25 @@
         return 0;
       }
 
-      const live = snap.running ? (Date.now() - snapAt) / 1000 : 0;
+      // Die Uhr läuft ab dem Start durch, auch in der Pause (das Ende bleibt eine feste Uhrzeit)
+      const live = (Date.now() - (snap.rcv || snapAt)) / 1000;
 
       return Math.min(snap.totalSec, snap.elapsed + live);
+    }
+
+    // Feste Endzeit in der Zeit dieses iPads (Unterschied der Geräteuhren wird herausgerechnet)
+    function endDate(el){
+      if(snap.started && snap.endAt && snap.sentAt){
+        return new Date((snap.rcv || snapAt) + (snap.endAt - snap.sentAt));
+      }
+
+      return new Date(Date.now() + (snap.totalSec - el) * 1000);
+    }
+
+    function fmtPause(ms){
+      const s = Math.round(ms / 1000);
+
+      return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + ' min';
     }
 
     function isDone(el){
@@ -637,7 +692,7 @@
 
       extras.style.display = snap.running ? 'none' : 'block';
       centerTotalTime.textContent = `${tm}:${ts}`;
-      centerTargetTime.textContent = fmtClock(new Date(Date.now() + remTotalSec * 1000));
+      centerTargetTime.textContent = fmtClock(endDate(el));
 
       const showHandles = isConnected() && !snap.running;
       const pB = boundaryHandlePos(el);
@@ -672,10 +727,14 @@
         ? Math.floor(snap.breakSec / 60)
         : Math.ceil(Math.min(snap.breakSec, snap.totalSec - el) / 60);
 
-      const remTotalSec = done ? snap.totalSec : snap.totalSec - el;
-      const end = new Date(Date.now() + remTotalSec * 1000);
+      endTimeEl.textContent = fmtClock(endDate(el));
 
-      endTimeEl.textContent = fmtClock(end);
+      // Pausen dieser Runde (die Uhr läuft in der Pause weiter, die Zeit ist dem Schüler verloren)
+      const pausedNow = snap.started && !snap.running && !done;
+      const pauseMs = (snap.pauseMs || 0) + (pausedNow ? Date.now() - (snap.rcv || snapAt) : 0);
+
+      pauseInfo.hidden = !(snap.pauseCount > 0);
+      pauseInfo.textContent = `Pausiert: ${snap.pauseCount}×, zusammen ${fmtPause(pauseMs)}`;
       toggleBtn.textContent = snap.running ? 'Pause' : (done ? 'Neu starten' : 'Start');
 
       // Einstellen nur bei stehendem Timer (Grundregel: Ende nur pausiert änderbar)
@@ -889,8 +948,57 @@
       }
     });
 
+    let lastTeacherToggle = 0;
+
     toggleBtn.addEventListener('click', () => {
+      lastTeacherToggle = Date.now();
       send({type:'toggle'});
+    });
+
+    // Hinweiston: Der Ton klappt erst, wenn auf dieser Seite einmal getippt wurde (iOS)
+    let beepCtx = null;
+
+    document.addEventListener('pointerdown', () => {
+      if(!beepCtx){
+        const AC = window.AudioContext || window.webkitAudioContext;
+
+        if(AC){
+          beepCtx = new AC();
+        }
+      }
+
+      if(beepCtx && beepCtx.state === 'suspended'){
+        beepCtx.resume();
+      }
+    });
+
+    function showPauseAlert(){
+      pauseAlert.hidden = false;
+
+      if('vibrate' in navigator){
+        navigator.vibrate([200, 100, 200]);
+      }
+
+      if(beepCtx && beepCtx.state === 'running'){
+        [0, 0.28].forEach((t) => {
+          const o = beepCtx.createOscillator();
+          const g = beepCtx.createGain();
+          const now = beepCtx.currentTime + t;
+
+          o.type = 'sine';
+          o.frequency.value = 880;
+          o.connect(g).connect(beepCtx.destination);
+          g.gain.setValueAtTime(0.0001, now);
+          g.gain.linearRampToValueAtTime(0.25, now + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+          o.start(now);
+          o.stop(now + 0.25);
+        });
+      }
+    }
+
+    document.getElementById('pauseAlertOk').addEventListener('click', () => {
+      pauseAlert.hidden = true;
     });
 
     lockBtn.addEventListener('click', () => {
@@ -956,6 +1064,8 @@
       breakMinEl.textContent = '–';
       endTimeEl.textContent = '–';
 
+      pauseAlert.hidden = true;
+      pauseInfo.hidden = true;
       deviceCard.hidden = true;
       setupNote.hidden = true;
       runNote.hidden = true;
@@ -1034,6 +1144,15 @@
         }
 
         if(msg && msg.type === 'state'){
+          msg.rcv = Date.now();
+
+          // Neue Pause, die nicht von diesem Lehrer-iPad kam: Hinweis (Schüler hat pausiert)
+          const prev = heldSnap || snap;
+
+          if(prev && msg.pauseCount > (prev.pauseCount || 0) && Date.now() - lastTeacherToggle > 5000){
+            showPauseAlert();
+          }
+
           // Während des Ziehens zeigt die Scheibe die eigene Eingabe; der Stand kommt danach
           if(dragging){
             heldSnap = msg;
